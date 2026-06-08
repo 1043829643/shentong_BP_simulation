@@ -1,0 +1,21 @@
+---
+description: Keep implementation status documentation current
+alwaysApply: true
+---
+
+# Implementation Status Documentation
+
+This project maintains `IMPLEMENTATION_STATUS.md` as the source of truth for:
+
+- Features that are truly implemented.
+- Implementation methods and related files.
+- Demo placeholders, fake data, and temporary algorithms.
+- Current verification status.
+
+When changing code, data, import behavior, scoring logic, page flow, tests, or build configuration:
+
+- Review `IMPLEMENTATION_STATUS.md` before finishing.
+- Update it in the same change if the implementation status, file paths, limitations, or verification results changed.
+- Mark newly real behavior under "真实实现".
+- Mark temporary, fake, randomized, or unvalidated behavior under "Demo 占位".
+- Do not leave the document stale after modifying related functionality.

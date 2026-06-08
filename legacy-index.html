@@ -1,0 +1,2427 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DOTA2 BP 交互模拟</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #11100e;
+      --panel: #1b1916;
+      --panel-2: #24211d;
+      --panel-3: #2d2923;
+      --line: #50483e;
+      --line-soft: rgba(210, 190, 155, 0.16);
+      --text: #f3eee5;
+      --muted: #b8afa1;
+      --dim: #81786c;
+      --gold: #d6aa54;
+      --gold-2: #8d672d;
+      --green: #47b879;
+      --green-soft: rgba(71, 184, 121, 0.18);
+      --red: #d05248;
+      --red-soft: rgba(208, 82, 72, 0.16);
+      --blue: #5d93c0;
+      --blue-soft: rgba(93, 147, 192, 0.16);
+      --purple: #a175c7;
+      --purple-soft: rgba(161, 117, 199, 0.16);
+      --cell: #15130f;
+      --shadow: rgba(0, 0, 0, 0.42);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+      letter-spacing: 0;
+    }
+
+    body {
+      overflow: hidden;
+    }
+
+    button,
+    select,
+    input {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .app {
+      height: 100vh;
+      min-width: 1180px;
+      background: var(--bg);
+    }
+
+    .topbar {
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 0 18px;
+      border-bottom: 1px solid var(--line-soft);
+      background: #171511;
+      box-shadow: 0 8px 22px var(--shadow);
+      position: relative;
+      z-index: 4;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 240px;
+    }
+
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      background: #241e16;
+      color: var(--gold);
+      font-weight: 900;
+      font-size: 14px;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 16px;
+      line-height: 1.1;
+    }
+
+    .brand span,
+    .minor {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .top-status {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-width: 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .top-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      min-width: 240px;
+    }
+
+    .shell {
+      height: calc(100vh - 52px);
+      overflow: hidden;
+    }
+
+    .button,
+    .seg-button,
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 34px;
+      border: 1px solid var(--line);
+      background: #29241d;
+      color: var(--text);
+      padding: 0 12px;
+      font-weight: 700;
+      font-size: 13px;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .button.primary {
+      border-color: #a8772e;
+      background: #865a22;
+      color: #fff2d2;
+    }
+
+    .button.success {
+      border-color: #4d9a68;
+      background: #2f754d;
+      color: #effff3;
+    }
+
+    .button.ghost {
+      background: transparent;
+      color: var(--muted);
+    }
+
+    .button:disabled,
+    .seg-button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .chip {
+      min-height: 28px;
+      padding: 0 9px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    .chip.active,
+    .seg-button.active {
+      border-color: var(--gold);
+      background: #3c2d17;
+      color: #ffe2a4;
+    }
+
+    .chip.green {
+      border-color: rgba(71, 184, 121, 0.45);
+      background: var(--green-soft);
+      color: #bdf4cc;
+    }
+
+    .chip.red {
+      border-color: rgba(208, 82, 72, 0.48);
+      background: var(--red-soft);
+      color: #ffc6bf;
+    }
+
+    .setup-screen {
+      height: 100%;
+      display: grid;
+      grid-template-columns: minmax(430px, 0.9fr) minmax(560px, 1.1fr);
+      gap: 24px;
+      padding: 24px;
+      overflow: auto;
+    }
+
+    .setup-hero,
+    .setup-panel {
+      min-height: 620px;
+      border: 1px solid var(--line-soft);
+      background: var(--panel);
+      box-shadow: 0 18px 44px var(--shadow);
+    }
+
+    .setup-hero {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 28px;
+      background:
+        linear-gradient(145deg, rgba(71, 184, 121, 0.1), transparent 34%),
+        linear-gradient(315deg, rgba(208, 82, 72, 0.13), transparent 40%),
+        #17140f;
+    }
+
+    .setup-hero h2 {
+      margin: 0;
+      max-width: 520px;
+      font-size: 34px;
+      line-height: 1.16;
+      letter-spacing: 0;
+    }
+
+    .setup-hero p {
+      margin: 14px 0 0;
+      max-width: 520px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .draft-preview {
+      display: grid;
+      gap: 12px;
+      margin-top: 28px;
+    }
+
+    .preview-row {
+      display: grid;
+      grid-template-columns: 84px repeat(5, minmax(44px, 1fr));
+      gap: 8px;
+      align-items: center;
+    }
+
+    .preview-label {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .preview-card {
+      height: 54px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line-soft);
+      background: #211b15;
+      color: var(--dim);
+      font-size: 11px;
+      overflow: hidden;
+    }
+
+    .setup-panel {
+      padding: 22px;
+      display: grid;
+      align-content: start;
+      gap: 16px;
+    }
+
+    .panel-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--line-soft);
+    }
+
+    .panel-title h2 {
+      margin: 0;
+      color: var(--gold);
+      font-size: 18px;
+    }
+
+    .field-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .field-grid.single {
+      grid-template-columns: 1fr;
+    }
+
+    .field {
+      display: grid;
+      gap: 9px;
+      padding: 14px;
+      border: 1px solid var(--line-soft);
+      background: var(--panel-2);
+      min-width: 0;
+    }
+
+    .field label {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .segmented {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    select,
+    .file-box {
+      width: 100%;
+      min-height: 38px;
+      border: 1px solid var(--line);
+      background: #16130f;
+      color: var(--text);
+      padding: 0 10px;
+      outline: none;
+    }
+
+    .file-box {
+      display: flex;
+      align-items: center;
+      color: var(--muted);
+      border-style: dashed;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .file-box input {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .data-status {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+
+    .status-card {
+      min-height: 78px;
+      padding: 12px;
+      border: 1px solid var(--line-soft);
+      background: #191611;
+    }
+
+    .status-card b {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--text);
+      font-size: 13px;
+    }
+
+    .status-card span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .setup-submit {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      padding-top: 8px;
+    }
+
+    .draft-screen {
+      height: 100%;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 268px;
+      overflow: hidden;
+    }
+
+    .draft-main {
+      min-width: 0;
+      display: grid;
+      grid-template-rows: 96px minmax(0, 1fr) 50px;
+      overflow: hidden;
+    }
+
+    .draft-summary {
+      display: grid;
+      grid-template-columns: 1fr 108px 1fr;
+      gap: 14px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--line-soft);
+      background: #16130f;
+    }
+
+    .side-block {
+      min-width: 0;
+    }
+
+    .side-block h2 {
+      margin: 0 0 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .slot-strip {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(54px, 1fr));
+      gap: 8px;
+    }
+
+    .draft-slot {
+      height: 48px;
+      border: 1px solid var(--line-soft);
+      background: #211b15;
+      overflow: hidden;
+      display: grid;
+      place-items: center;
+      color: var(--dim);
+      font-size: 11px;
+      position: relative;
+    }
+
+    .draft-slot img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .draft-slot span {
+      position: absolute;
+      left: 4px;
+      bottom: 3px;
+      max-width: calc(100% - 8px);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: #fff4d2;
+      font-size: 10px;
+      text-shadow: 0 1px 2px #000;
+    }
+
+    .lane-strip {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(86px, 1fr));
+      gap: 8px;
+    }
+
+    .lane-drop {
+      min-height: 54px;
+      display: grid;
+      grid-template-rows: 18px 1fr;
+      border: 1px solid var(--line-soft);
+      background: #211b15;
+      overflow: hidden;
+    }
+
+    .lane-drop.drag-over {
+      border-color: var(--gold);
+      background: #3a2b18;
+      box-shadow: inset 0 0 0 1px rgba(214, 170, 84, 0.42);
+    }
+
+    .lane-drop-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      padding: 0 6px;
+      border-bottom: 1px solid var(--line-soft);
+      color: var(--muted);
+      font-size: 10px;
+      white-space: nowrap;
+    }
+
+    .lane-heroes {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px;
+      overflow: hidden;
+    }
+
+    .lane-hero {
+      width: 44px;
+      height: 28px;
+      flex: 0 0 auto;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: #2a241d;
+      padding: 0;
+      overflow: hidden;
+      position: relative;
+      cursor: grab;
+    }
+
+    .lane-hero:active {
+      cursor: grabbing;
+    }
+
+    .lane-hero img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .lane-empty {
+      color: var(--dim);
+      font-size: 11px;
+    }
+
+    .turn-card {
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      background: #231d15;
+      text-align: center;
+    }
+
+    .turn-card strong {
+      display: block;
+      color: var(--gold);
+      font-size: 26px;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+
+    .turn-card span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .hero-board {
+      display: grid;
+      grid-template-rows: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      padding: 12px 16px;
+      overflow: hidden;
+    }
+
+    .pool-row {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 104px repeat(6, minmax(92px, 1fr));
+      gap: 8px;
+    }
+
+    .pool-label {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px;
+      border: 1px solid var(--line-soft);
+      background: #17140f;
+    }
+
+    .pool-label b {
+      font-size: 14px;
+      line-height: 1.3;
+    }
+
+    .pool-label span {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    .role-panel {
+      min-width: 0;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: 27px minmax(0, 1fr);
+      border: 1px solid var(--line-soft);
+      background: #171410;
+    }
+
+    .role-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 4px;
+      padding: 0 8px;
+      border-bottom: 1px solid var(--line-soft);
+      background: #211a13;
+      color: var(--muted);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .role-body {
+      min-height: 0;
+      overflow: auto;
+      padding: 7px;
+      scrollbar-width: thin;
+      scrollbar-color: #55493b #171410;
+    }
+
+    .tier-line {
+      display: grid;
+      grid-template-columns: 17px 1fr;
+      gap: 5px;
+      align-items: start;
+      margin-bottom: 6px;
+    }
+
+    .tier-badge {
+      width: 17px;
+      height: 24px;
+      display: grid;
+      place-items: center;
+      border-left: 2px solid var(--gold);
+      background: rgba(214, 170, 84, 0.12);
+      color: #ffd77e;
+      font-size: 10px;
+      font-weight: 900;
+    }
+
+    .tier-badge.a {
+      border-left-color: var(--purple);
+      background: var(--purple-soft);
+      color: #dfc7fa;
+    }
+
+    .tier-badge.b {
+      border-left-color: var(--blue);
+      background: var(--blue-soft);
+      color: #c2def5;
+    }
+
+    .tier-badge.c {
+      border-left-color: var(--dim);
+      background: rgba(129, 120, 108, 0.14);
+      color: #c9beb1;
+    }
+
+    .hero-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      align-items: flex-start;
+      min-width: 0;
+    }
+
+    .hero-card {
+      width: 50px;
+      height: 30px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      background: #2a241d;
+      position: relative;
+      overflow: hidden;
+      padding: 0;
+      transition: transform 0.12s ease, border-color 0.12s ease, opacity 0.12s ease;
+    }
+
+    .hero-card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .hero-card .fallback {
+      display: none;
+      width: 100%;
+      height: 100%;
+      place-items: center;
+      color: #ffe5b4;
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .hero-card.image-failed img {
+      display: none;
+    }
+
+    .hero-card.image-failed .fallback {
+      display: grid;
+    }
+
+    .hero-card:hover {
+      transform: scale(1.16);
+      z-index: 5;
+      border-color: #e8c77f;
+      box-shadow: 0 0 12px rgba(214, 170, 84, 0.35);
+    }
+
+    .hero-card.selected {
+      opacity: 0.5;
+      filter: grayscale(0.85);
+      cursor: default;
+    }
+
+    .hero-card.selected:hover {
+      transform: none;
+      box-shadow: none;
+      border-color: rgba(255, 255, 255, 0.16);
+    }
+
+    .counter-mark {
+      position: absolute;
+      top: 1px;
+      right: 1px;
+      display: flex;
+      gap: 1px;
+      filter: drop-shadow(0 1px 1px #000);
+      pointer-events: none;
+    }
+
+    .counter-tri {
+      width: 0;
+      height: 0;
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+    }
+
+    .counter-tri.good {
+      border-bottom: 8px solid #84f631;
+    }
+
+    .counter-tri.bad {
+      border-top: 8px solid #ff2d21;
+    }
+
+    .draft-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 0 16px;
+      border-top: 1px solid var(--line-soft);
+      background: #17140f;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .legend {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .timeline {
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      border-left: 1px solid var(--line-soft);
+      background:
+        linear-gradient(90deg, rgba(20, 30, 39, 0.96) 0%, rgba(21, 24, 29, 0.98) 46%, rgba(43, 13, 22, 0.96) 100%),
+        #17130e;
+    }
+
+    .timeline-head {
+      display: grid;
+      gap: 10px;
+      padding: 12px;
+      border-bottom: 1px solid var(--line-soft);
+    }
+
+    .timeline-head h2 {
+      margin: 0;
+      color: var(--gold);
+      font-size: 15px;
+    }
+
+    .timeline-head .button {
+      width: 100%;
+      min-height: 34px;
+      justify-content: center;
+      background: #96631d;
+      border-color: #c79032;
+      color: #fff5d4;
+    }
+
+    .timeline-list {
+      overflow: auto;
+      padding: 8px 4px 10px;
+      scrollbar-width: thin;
+      scrollbar-color: #55493b #17130e;
+    }
+
+    .draft-track {
+      display: grid;
+      gap: 2px;
+      min-height: 100%;
+      padding: 0 3px 8px;
+    }
+
+    .track-head {
+      display: grid;
+      grid-template-columns: 88px 42px 88px;
+      align-items: end;
+      justify-content: center;
+      gap: 0;
+      padding: 0 2px 5px;
+    }
+
+    .track-label {
+      font-size: 12px;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .track-label.radiant {
+      color: #aeb8c4;
+    }
+
+    .track-label.dire {
+      color: #ffd0da;
+    }
+
+    .track-row {
+      min-height: 31px;
+      display: grid;
+      grid-template-columns: 88px 20px 24px 20px 88px;
+      align-items: center;
+      justify-content: center;
+      color: #636a70;
+      position: relative;
+    }
+
+    .track-row.done {
+      cursor: pointer;
+    }
+
+    .track-row.done:hover .track-slot.filled {
+      border-color: #e0b75c;
+      box-shadow: 0 0 12px rgba(224, 183, 92, 0.35);
+    }
+
+    .track-row.current .track-number {
+      color: #f0c05f;
+      text-shadow: 0 0 8px rgba(240, 192, 95, 0.35);
+    }
+
+    .track-row.future {
+      opacity: 0.45;
+    }
+
+    .track-slot-wrap {
+      height: 28px;
+      display: flex;
+      align-items: center;
+    }
+
+    .track-slot-wrap.radiant {
+      justify-content: flex-end;
+    }
+
+    .track-slot-wrap.dire {
+      justify-content: flex-start;
+    }
+
+    .track-branch {
+      height: 1px;
+      background: linear-gradient(90deg, rgba(0, 0, 0, 0.1), rgba(8, 8, 8, 0.9));
+      box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05);
+      opacity: 0.72;
+    }
+
+    .track-branch.right {
+      background: linear-gradient(90deg, rgba(8, 8, 8, 0.9), rgba(0, 0, 0, 0.1));
+    }
+
+    .track-branch.muted {
+      opacity: 0.16;
+    }
+
+    .track-number {
+      color: #777d83;
+      font-size: 13px;
+      line-height: 1;
+      text-align: center;
+      text-shadow: 0 1px 2px #000;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .track-number.pick {
+      color: #d99a33;
+      font-weight: 800;
+    }
+
+    .track-slot {
+      width: 72px;
+      height: 28px;
+      overflow: visible;
+      position: relative;
+      border: 1px solid #5b1e1e;
+      border-radius: 4px;
+      background: #181510;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05), 0 2px 7px rgba(0, 0, 0, 0.45);
+    }
+
+    .track-slot img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      border-radius: 3px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .track-slot .track-fallback {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      color: #e7d7b8;
+      font-size: 11px;
+      font-weight: 800;
+      background: #22201d;
+      z-index: 0;
+    }
+
+    .track-slot.slot-pick {
+      border-color: rgba(232, 199, 127, 0.72);
+    }
+
+    .track-slot.slot-ban img {
+      filter: grayscale(1) brightness(0.42) contrast(1.05);
+    }
+
+    .ban-cross {
+      position: absolute;
+      top: -8px;
+      left: -8px;
+      width: 22px;
+      height: 26px;
+      pointer-events: none;
+      filter: drop-shadow(0 1px 1px #000);
+      z-index: 2;
+    }
+
+    .track-slot.dire .ban-cross {
+      left: auto;
+      right: -9px;
+    }
+
+    .ban-cross::before,
+    .ban-cross::after {
+      content: "";
+      position: absolute;
+      left: 9px;
+      top: 0;
+      width: 3px;
+      height: 28px;
+      background: #e10c06;
+      border-radius: 2px;
+    }
+
+    .ban-cross::before {
+      transform: rotate(38deg);
+    }
+
+    .ban-cross::after {
+      transform: rotate(-38deg);
+    }
+
+    .scheme-panel {
+      padding: 10px;
+      border-top: 1px solid var(--line-soft);
+    }
+
+    .scheme-list {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      max-height: 78px;
+      overflow: auto;
+      margin-top: 8px;
+    }
+
+    .overview-screen {
+      height: 100%;
+      overflow: auto;
+      padding: 18px;
+    }
+
+    .overview-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .overview-toolbar h2 {
+      margin: 0;
+      color: var(--gold);
+      font-size: 18px;
+    }
+
+    .scheme-row {
+      display: grid;
+      grid-template-columns: 150px minmax(0, 1fr) 118px;
+      gap: 12px;
+      padding: 12px;
+      margin-bottom: 12px;
+      border: 1px solid var(--line-soft);
+      background: var(--panel);
+      box-shadow: 0 12px 30px var(--shadow);
+    }
+
+    .scheme-meta {
+      display: grid;
+      align-content: space-between;
+      gap: 12px;
+      padding-right: 12px;
+      border-right: 1px solid var(--line-soft);
+    }
+
+    .scheme-meta h3 {
+      margin: 0 0 8px;
+      color: var(--gold);
+      font-size: 16px;
+    }
+
+    .scheme-meta p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .lane-grid {
+      min-width: 0;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .lane-card {
+      min-width: 0;
+      display: grid;
+      grid-template-rows: 30px 1fr 22px 1fr;
+      border: 1px solid var(--line-soft);
+      background: #16130f;
+      min-height: 166px;
+    }
+
+    .lane-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 0 9px;
+      border-bottom: 1px solid var(--line-soft);
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .lane-title .good {
+      color: #9df0b7;
+    }
+
+    .lane-title .bad {
+      color: #ffb7ae;
+    }
+
+    .lane-title .even {
+      color: #ffe2a4;
+    }
+
+    .lane-side {
+      min-width: 0;
+      display: grid;
+      grid-template-columns: 38px 38px minmax(0, 1fr);
+      gap: 6px;
+      align-items: center;
+      padding: 7px;
+    }
+
+    .lane-side.single {
+      grid-template-columns: 38px minmax(0, 1fr);
+    }
+
+    .tiny-hero {
+      width: 38px;
+      height: 28px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: #2b241c;
+      overflow: hidden;
+      display: grid;
+      place-items: center;
+      color: var(--dim);
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .tiny-hero img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .lane-text {
+      min-width: 0;
+      color: var(--text);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .lane-text span {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .lane-vs {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-top: 1px solid var(--line-soft);
+      border-bottom: 1px solid var(--line-soft);
+      color: var(--dim);
+      font-size: 11px;
+    }
+
+    .score-box {
+      display: grid;
+      align-content: center;
+      justify-items: center;
+      gap: 7px;
+      padding-left: 12px;
+      border-left: 1px solid var(--line-soft);
+      text-align: center;
+    }
+
+    .score-box strong {
+      font-size: 24px;
+      color: var(--green);
+    }
+
+    .score-box.bad strong {
+      color: var(--red);
+    }
+
+    .score-box.even strong {
+      color: var(--gold);
+    }
+
+    .score-box span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .empty-state {
+      display: grid;
+      place-items: center;
+      min-height: 220px;
+      border: 1px solid var(--line-soft);
+      background: var(--panel);
+      color: var(--muted);
+    }
+
+    @media (max-width: 1280px) {
+      .app {
+        min-width: 1060px;
+      }
+
+      .pool-row {
+        grid-template-columns: 94px repeat(6, minmax(82px, 1fr));
+      }
+
+      .hero-card {
+        width: 45px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="app" class="app"></div>
+
+  <script>
+    const DRAFT_SEQUENCE = [
+      { action: "Ban", pickOrder: "first" },
+      { action: "Ban", pickOrder: "second" },
+      { action: "Ban", pickOrder: "second" },
+      { action: "Ban", pickOrder: "first" },
+      { action: "Ban", pickOrder: "second" },
+      { action: "Ban", pickOrder: "second" },
+      { action: "Ban", pickOrder: "first" },
+      { action: "Pick", pickOrder: "first" },
+      { action: "Pick", pickOrder: "second" },
+      { action: "Ban", pickOrder: "first" },
+      { action: "Ban", pickOrder: "first" },
+      { action: "Ban", pickOrder: "second" },
+      { action: "Pick", pickOrder: "second" },
+      { action: "Pick", pickOrder: "first" },
+      { action: "Pick", pickOrder: "first" },
+      { action: "Pick", pickOrder: "second" },
+      { action: "Pick", pickOrder: "second" },
+      { action: "Pick", pickOrder: "first" },
+      { action: "Ban", pickOrder: "first" },
+      { action: "Ban", pickOrder: "second" },
+      { action: "Ban", pickOrder: "second" },
+      { action: "Ban", pickOrder: "first" },
+      { action: "Pick", pickOrder: "first" },
+      { action: "Pick", pickOrder: "second" },
+    ];
+
+    const TEAMS = {
+      NONE: { name: "不指定战队", type: "none" },
+      XG: { name: "Xtreme Gaming", type: "preset" },
+      VG: { name: "Vici Gaming", type: "preset" },
+      FALCONS: { name: "Team Falcons", type: "preset" },
+      LIQUID: { name: "Team Liquid", type: "preset" },
+      SPIRIT: { name: "Team Spirit", type: "preset" },
+      CUSTOM: { name: "自定义战队", type: "custom" },
+    };
+
+    const HEROES = [
+      { id: "antimage", name: "Anti-Mage", cn: "敌法师", roles: [1] },
+      { id: "axe", name: "Axe", cn: "斧王", roles: [3] },
+      { id: "bane", name: "Bane", cn: "祸乱之源", roles: [5] },
+      { id: "bloodseeker", name: "Bloodseeker", cn: "血魔", roles: [1, 2] },
+      { id: "crystal_maiden", name: "Crystal Maiden", cn: "水晶室女", roles: [5] },
+      { id: "drow_ranger", name: "Drow Ranger", cn: "卓尔游侠", roles: [1] },
+      { id: "earthshaker", name: "Earthshaker", cn: "撼地者", roles: [4] },
+      { id: "juggernaut", name: "Juggernaut", cn: "主宰", roles: [1] },
+      { id: "mirana", name: "Mirana", cn: "米拉娜", roles: [4, 5] },
+      { id: "morphling", name: "Morphling", cn: "变体精灵", roles: [1] },
+      { id: "shadow_fiend", name: "Shadow Fiend", cn: "影魔", roles: [2] },
+      { id: "phantom_lancer", name: "Phantom Lancer", cn: "幻影长矛手", roles: [1] },
+      { id: "puck", name: "Puck", cn: "帕克", roles: [2] },
+      { id: "pudge", name: "Pudge", cn: "帕吉", roles: [4] },
+      { id: "razor", name: "Razor", cn: "剃刀", roles: [1, 2, 3] },
+      { id: "sand_king", name: "Sand King", cn: "沙王", roles: [3] },
+      { id: "storm_spirit", name: "Storm Spirit", cn: "风暴之灵", roles: [2] },
+      { id: "sven", name: "Sven", cn: "斯温", roles: [1] },
+      { id: "tiny", name: "Tiny", cn: "小小", roles: [1, 2, 4] },
+      { id: "vengefulspirit", name: "Vengeful Spirit", cn: "复仇之魂", roles: [4, 5] },
+      { id: "windrunner", name: "Windranger", cn: "风行者", roles: [2, 4] },
+      { id: "zuus", name: "Zeus", cn: "宙斯", roles: [2] },
+      { id: "kunkka", name: "Kunkka", cn: "昆卡", roles: [2] },
+      { id: "lina", name: "Lina", cn: "莉娜", roles: [2] },
+      { id: "lion", name: "Lion", cn: "莱恩", roles: [4, 5] },
+      { id: "shadow_shaman", name: "Shadow Shaman", cn: "暗影萨满", roles: [4, 5] },
+      { id: "slardar", name: "Slardar", cn: "斯拉达", roles: [3] },
+      { id: "tidehunter", name: "Tidehunter", cn: "潮汐猎人", roles: [3] },
+      { id: "witch_doctor", name: "Witch Doctor", cn: "巫医", roles: [5] },
+      { id: "lich", name: "Lich", cn: "巫妖", roles: [5] },
+      { id: "riki", name: "Riki", cn: "力丸", roles: [1, 4] },
+      { id: "enigma", name: "Enigma", cn: "谜团", roles: [3, 4] },
+      { id: "tinker", name: "Tinker", cn: "修补匠", roles: [2] },
+      { id: "sniper", name: "Sniper", cn: "狙击手", roles: [2] },
+      { id: "faceless_void", name: "Faceless Void", cn: "虚空假面", roles: [1] },
+      { id: "phantom_assassin", name: "Phantom Assassin", cn: "幻影刺客", roles: [1] },
+      { id: "templar_assassin", name: "Templar Assassin", cn: "圣堂刺客", roles: [1, 2] },
+      { id: "viper", name: "Viper", cn: "冥界亚龙", roles: [2, 3] },
+      { id: "luna", name: "Luna", cn: "露娜", roles: [1] },
+      { id: "dragon_knight", name: "Dragon Knight", cn: "龙骑士", roles: [2, 3] },
+      { id: "dazzle", name: "Dazzle", cn: "戴泽", roles: [5] },
+      { id: "leshrac", name: "Leshrac", cn: "拉席克", roles: [2] },
+      { id: "furion", name: "Nature's Prophet", cn: "先知", roles: [1, 3, 4] },
+      { id: "life_stealer", name: "Lifestealer", cn: "噬魂鬼", roles: [1] },
+      { id: "dark_seer", name: "Dark Seer", cn: "黑暗贤者", roles: [3] },
+      { id: "weaver", name: "Weaver", cn: "编织者", roles: [1, 4] },
+      { id: "jakiro", name: "Jakiro", cn: "杰奇洛", roles: [5] },
+      { id: "batrider", name: "Batrider", cn: "蝙蝠骑士", roles: [3, 4] },
+      { id: "chen", name: "Chen", cn: "陈", roles: [5] },
+      { id: "doom_bringer", name: "Doom", cn: "末日使者", roles: [3] },
+      { id: "ursa", name: "Ursa", cn: "熊战士", roles: [1] },
+      { id: "spirit_breaker", name: "Spirit Breaker", cn: "裂魂人", roles: [4] },
+      { id: "gyrocopter", name: "Gyrocopter", cn: "矮人直升机", roles: [1] },
+      { id: "alchemist", name: "Alchemist", cn: "炼金术士", roles: [1, 3] },
+      { id: "invoker", name: "Invoker", cn: "祈求者", roles: [2] },
+      { id: "silencer", name: "Silencer", cn: "沉默术士", roles: [5] },
+      { id: "obsidian_destroyer", name: "Outworld Destroyer", cn: "殁境神蚀者", roles: [2] },
+      { id: "brewmaster", name: "Brewmaster", cn: "酒仙", roles: [3] },
+      { id: "shadow_demon", name: "Shadow Demon", cn: "暗影恶魔", roles: [5] },
+      { id: "treant", name: "Treant Protector", cn: "树精卫士", roles: [5] },
+      { id: "undying", name: "Undying", cn: "不朽尸王", roles: [5] },
+      { id: "rubick", name: "Rubick", cn: "拉比克", roles: [4, 5] },
+      { id: "disruptor", name: "Disruptor", cn: "干扰者", roles: [5] },
+      { id: "naga_siren", name: "Naga Siren", cn: "娜迦海妖", roles: [1] },
+      { id: "troll_warlord", name: "Troll Warlord", cn: "巨魔战将", roles: [1] },
+      { id: "centaur", name: "Centaur Warrunner", cn: "半人马战行者", roles: [3] },
+      { id: "magnataur", name: "Magnus", cn: "马格纳斯", roles: [3] },
+      { id: "shredder", name: "Timbersaw", cn: "伐木机", roles: [3] },
+      { id: "bristleback", name: "Bristleback", cn: "钢背兽", roles: [3] },
+      { id: "tusk", name: "Tusk", cn: "巨牙海民", roles: [4] },
+      { id: "skywrath_mage", name: "Skywrath Mage", cn: "天怒法师", roles: [4] },
+      { id: "abaddon", name: "Abaddon", cn: "亚巴顿", roles: [3, 5] },
+      { id: "techies", name: "Techies", cn: "工程师", roles: [4] },
+      { id: "ember_spirit", name: "Ember Spirit", cn: "灰烬之灵", roles: [2] },
+      { id: "earth_spirit", name: "Earth Spirit", cn: "大地之灵", roles: [4] },
+      { id: "terrorblade", name: "Terrorblade", cn: "恐怖利刃", roles: [1] },
+      { id: "pangolier", name: "Pangolier", cn: "石鳞剑士", roles: [2, 3] },
+      { id: "grimstroke", name: "Grimstroke", cn: "天涯墨客", roles: [4, 5] },
+      { id: "hoodwink", name: "Hoodwink", cn: "森海飞霞", roles: [4] },
+      { id: "void_spirit", name: "Void Spirit", cn: "虚无之灵", roles: [2] },
+      { id: "mars", name: "Mars", cn: "玛尔斯", roles: [3] },
+      { id: "lone_druid", name: "Lone Druid", cn: "德鲁伊", roles: [1] },
+      { id: "beastmaster", name: "Beastmaster", cn: "兽王", roles: [3] },
+      { id: "monkey_king", name: "Monkey King", cn: "齐天大圣", roles: [1, 2] },
+      { id: "kez", name: "Kez", cn: "凯", roles: [1] },
+      { id: "muerta", name: "Muerta", cn: "琼英碧灵", roles: [1, 4] },
+      { id: "spectre", name: "Spectre", cn: "幽鬼", roles: [1] },
+      { id: "clinkz", name: "Clinkz", cn: "克林克兹", roles: [1] },
+      { id: "primal_beast", name: "Primal Beast", cn: "兽", roles: [2, 3] },
+      { id: "keeper_of_the_light", name: "Keeper of the Light", cn: "光之守卫", roles: [4] },
+      { id: "huskar", name: "Huskar", cn: "哈斯卡", roles: [2] },
+      { id: "abyssal_underlord", name: "Underlord", cn: "孽主", roles: [3] },
+      { id: "dawnbreaker", name: "Dawnbreaker", cn: "破晓辰星", roles: [3, 5] },
+      { id: "night_stalker", name: "Night Stalker", cn: "暗夜魔王", roles: [3] },
+      { id: "rattletrap", name: "Clockwerk", cn: "发条技师", roles: [4, 5] },
+      { id: "wisp", name: "Io", cn: "艾欧", roles: [4, 5] },
+      { id: "nyx_assassin", name: "Nyx Assassin", cn: "司夜刺客", roles: [4] },
+      { id: "dark_willow", name: "Dark Willow", cn: "邪影芳灵", roles: [4] },
+      { id: "phoenix", name: "Phoenix", cn: "凤凰", roles: [5] },
+      { id: "enchantress", name: "Enchantress", cn: "魅惑魔女", roles: [5] },
+      { id: "venomancer", name: "Venomancer", cn: "剧毒术士", roles: [5] },
+      { id: "winter_wyvern", name: "Winter Wyvern", cn: "寒冬飞龙", roles: [5] },
+      { id: "warlock", name: "Warlock", cn: "术士", roles: [5] },
+      { id: "oracle", name: "Oracle", cn: "神谕者", roles: [5] },
+      { id: "elder_titan", name: "Elder Titan", cn: "上古巨神", roles: [5] },
+      { id: "ringmaster", name: "Ringmaster", cn: "百戏大王", roles: [5] },
+      { id: "medusa", name: "Medusa", cn: "美杜莎", roles: [1] },
+      { id: "queenofpain", name: "Queen of Pain", cn: "痛苦女王", roles: [2] },
+      { id: "death_prophet", name: "Death Prophet", cn: "死亡先知", roles: [2, 3] },
+      { id: "slark", name: "Slark", cn: "斯拉克", roles: [1] },
+      { id: "necrolyte", name: "Necrophos", cn: "瘟疫法师", roles: [3] },
+      { id: "pugna", name: "Pugna", cn: "帕格纳", roles: [2, 5] },
+    ];
+
+    HEROES.push(
+      { id: "marci", name: "Marci", cn: "玛西", roles: [1, 4, 5] },
+      { id: "skeleton_king", name: "Wraith King", cn: "冥魂大帝", roles: [1] },
+      { id: "meepo", name: "Meepo", cn: "米波", roles: [1, 2] },
+      { id: "broodmother", name: "Broodmother", cn: "育母蜘蛛", roles: [1] },
+      { id: "chaos_knight", name: "Chaos Knight", cn: "混沌骑士", roles: [1] },
+      { id: "snapfire", name: "Snapfire", cn: "电炎绝手", roles: [2, 3, 4, 5] },
+      { id: "lycan", name: "Lycan", cn: "狼人", roles: [2, 3] },
+      { id: "omniknight", name: "Omniknight", cn: "全能骑士", roles: [3, 5] },
+      { id: "legion_commander", name: "Legion Commander", cn: "军团指挥官", roles: [3] },
+      { id: "visage", name: "Visage", cn: "维萨吉", roles: [3] },
+      { id: "bounty_hunter", name: "Bounty Hunter", cn: "赏金猎人", roles: [4] },
+      { id: "ancient_apparition", name: "Ancient Apparition", cn: "远古冰魄", roles: [5] },
+      { id: "ogre_magi", name: "Ogre Magi", cn: "食人魔魔法师", roles: [5] },
+      { id: "longo", name: "Longo", cn: "朗戈", roles: [1, 2, 3, 4, 5] },
+    );
+
+    const heroById = new Map(HEROES.map((hero) => [hero.id, hero]));
+    const HERO_NAME_TO_ID = new Map([
+      ["小小", "tiny"], ["凯", "kez"], ["风行者", "windrunner"], ["炼金术士", "alchemist"],
+      ["齐天大圣", "monkey_king"], ["琼英碧灵", "muerta"], ["影魔", "shadow_fiend"],
+      ["德鲁伊", "lone_druid"], ["熊战士", "ursa"], ["恐怖利刃", "terrorblade"],
+      ["虚空假面", "faceless_void"], ["露娜", "luna"], ["噬魂鬼", "life_stealer"],
+      ["卓尔游侠", "drow_ranger"], ["瘟疫法师", "necrolyte"], ["末日使者", "doom_bringer"],
+      ["兽王", "beastmaster"], ["圣堂刺客", "templar_assassin"], ["编织者", "weaver"],
+      ["矮人直升机", "gyrocopter"], ["幻影长矛手", "phantom_lancer"], ["龙骑士", "dragon_knight"],
+      ["先知", "furion"], ["美杜莎", "medusa"], ["克林克兹", "clinkz"], ["娜迦海妖", "naga_siren"],
+      ["变体精灵", "morphling"], ["幻影刺客", "phantom_assassin"], ["玛西", "marci"],
+      ["钢背兽", "bristleback"], ["主宰", "juggernaut"], ["冥界亚龙", "viper"],
+      ["冥魂大帝", "skeleton_king"], ["复仇之魂", "vengefulspirit"], ["米波", "meepo"],
+      ["斯温", "sven"], ["育母蜘蛛", "broodmother"], ["亚巴顿", "abaddon"], ["剃刀", "razor"],
+      ["血魔", "bloodseeker"], ["巨魔战将", "troll_warlord"], ["幽鬼", "spectre"],
+      ["斯拉克", "slark"], ["昆卡", "kunkka"], ["暗夜魔王", "night_stalker"],
+      ["混沌骑士", "chaos_knight"], ["痛苦女王", "queenofpain"], ["破晓辰星", "dawnbreaker"],
+      ["米拉娜", "mirana"], ["风暴之灵", "storm_spirit"], ["石鳞剑士", "pangolier"],
+      ["灰烬之灵", "ember_spirit"], ["帕克", "puck"], ["虚无之灵", "void_spirit"],
+      ["祈求者", "invoker"], ["沙王", "sand_king"], ["电炎绝手", "snapfire"],
+      ["斯拉达", "slardar"], ["哈斯卡", "huskar"], ["拉席克", "leshrac"], ["獣", "primal_beast"],
+      ["狙击手", "sniper"], ["死亡先知", "death_prophet"], ["光之守卫", "keeper_of_the_light"],
+      ["宙斯", "zuus"], ["修补匠", "tinker"], ["蝙蝠骑士", "batrider"], ["撼地者", "earthshaker"],
+      ["朗戈", "longo"], ["狼人", "lycan"], ["伐木机", "shredder"], ["司夜刺客", "nyx_assassin"],
+      ["大地之灵", "earth_spirit"], ["斧王", "axe"], ["潮汐猎人", "tidehunter"],
+      ["孽主", "abyssal_underlord"], ["玛尔斯", "mars"], ["半人马战行者", "centaur"],
+      ["酒仙", "brewmaster"], ["谜团", "enigma"], ["马格纳斯", "magnataur"],
+      ["黑暗贤者", "dark_seer"], ["不朽尸王", "undying"], ["全能骑士", "omniknight"],
+      ["凤凰", "phoenix"], ["军团指挥官", "legion_commander"], ["剧毒术士", "venomancer"],
+      ["拉比克", "rubick"], ["祸乱之源", "bane"], ["维萨吉", "visage"], ["森海飞霞", "hoodwink"],
+      ["莱恩", "lion"], ["巨牙海民", "tusk"], ["发条技师", "rattletrap"], ["工程师", "techies"],
+      ["暗影恶魔", "shadow_demon"], ["暗影萨满", "shadow_shaman"], ["天涯墨客", "grimstroke"],
+      ["艾欧", "wisp"], ["邪影芳灵", "dark_willow"], ["魅惑魔女", "enchantress"],
+      ["百戏大王", "ringmaster"], ["沉默术士", "silencer"], ["天怒法师", "skywrath_mage"],
+      ["裂魂人", "spirit_breaker"], ["术士", "warlock"], ["帕吉", "pudge"],
+      ["寒冬飞龙", "winter_wyvern"], ["杰奇洛", "jakiro"], ["赏金猎人", "bounty_hunter"],
+      ["陈", "chen"], ["巫妖", "lich"], ["树精卫士", "treant"], ["神谕者", "oracle"],
+      ["戴泽", "dazzle"], ["巫医", "witch_doctor"], ["水晶室女", "crystal_maiden"],
+      ["远古冰魄", "ancient_apparition"], ["干扰者", "disruptor"], ["上古巨神", "elder_titan"],
+      ["帕格纳", "pugna"], ["食人魔魔法师", "ogre_magi"],
+    ]);
+
+    const TEAM_POOLS = {
+      XG: {
+        1: { S: ["drow_ranger", "lone_druid", "beastmaster", "monkey_king"], A: ["terrorblade", "tiny", "faceless_void", "weaver", "alchemist"], B: ["ursa", "kez"], C: ["muerta", "life_stealer", "luna", "templar_assassin", "morphling", "dragon_knight", "spectre", "phantom_assassin", "furion", "phantom_lancer", "gyrocopter", "clinkz"] },
+        2: { S: ["pangolier", "tinker", "slardar", "beastmaster", "sand_king", "storm_spirit"], A: ["ember_spirit", "puck", "monkey_king"], B: ["leshrac", "primal_beast", "keeper_of_the_light"], C: ["void_spirit", "shadow_fiend", "huskar", "razor", "sniper"] },
+        3: { S: ["slardar", "pangolier", "beastmaster"], A: ["bristleback", "doom_bringer", "mars", "shredder", "abyssal_underlord", "tidehunter", "axe"], B: ["dawnbreaker", "brewmaster", "magnataur", "primal_beast"], C: ["centaur", "night_stalker"] },
+        4: { S: ["shadow_demon", "hoodwink", "rubick"], A: ["rattletrap", "tiny"], B: ["keeper_of_the_light", "wisp", "tusk", "techies", "nyx_assassin", "batrider", "lion"], C: ["windrunner", "dark_willow", "spirit_breaker", "shadow_shaman", "muerta"] },
+        5: { S: ["phoenix"], A: ["rattletrap"], B: ["rubick", "witch_doctor", "enchantress", "venomancer", "bane"], C: ["silencer", "disruptor", "treant", "winter_wyvern", "warlock", "jakiro", "dazzle", "oracle", "mirana", "elder_titan", "ringmaster", "crystal_maiden"] },
+      },
+      VG: {
+        1: { S: ["windrunner", "beastmaster", "kez", "muerta", "monkey_king"], A: ["tiny", "terrorblade"], B: ["alchemist", "ursa", "faceless_void", "drow_ranger", "lone_druid"], C: ["medusa", "gyrocopter", "templar_assassin", "juggernaut"] },
+        2: { S: ["puck", "slardar", "beastmaster", "viper", "storm_spirit", "queenofpain"], A: ["monkey_king", "sniper", "ember_spirit", "tiny"], B: ["pangolier"], C: ["death_prophet", "leshrac", "void_spirit", "slark", "zuus", "razor"] },
+        3: { S: ["slardar", "beastmaster", "batrider", "abyssal_underlord", "sand_king"], A: ["bristleback", "pangolier"], B: ["primal_beast", "doom_bringer", "alchemist", "shredder", "axe", "mars"], C: ["night_stalker", "tidehunter", "centaur", "death_prophet", "necrolyte", "dawnbreaker"] },
+        4: { S: ["rubick", "windrunner", "batrider", "wisp", "muerta"], A: [], B: ["techies", "rattletrap", "earthshaker", "hoodwink"], C: ["grimstroke", "earth_spirit", "nyx_assassin", "leshrac", "tusk", "keeper_of_the_light", "dark_willow"] },
+        5: { S: ["treant", "phoenix"], A: ["winter_wyvern", "wisp", "shadow_demon"], B: ["lich", "venomancer", "silencer"], C: ["disruptor", "enchantress", "warlock", "dazzle", "pugna", "jakiro"] },
+      },
+    };
+
+    const FALLBACK_BY_ROLE = {
+      1: ["terrorblade", "faceless_void", "drow_ranger", "sven", "naga_siren", "ursa", "morphling", "luna", "phantom_assassin", "slark", "medusa", "monkey_king"],
+      2: ["puck", "storm_spirit", "lina", "shadow_fiend", "ember_spirit", "queenofpain", "invoker", "leshrac", "viper", "kunkka", "zuus", "pangolier"],
+      3: ["mars", "doom_bringer", "axe", "centaur", "brewmaster", "shredder", "tidehunter", "beastmaster", "slardar", "dawnbreaker", "abyssal_underlord", "dark_seer"],
+      4: ["rubick", "tiny", "tusk", "hoodwink", "earthshaker", "rattletrap", "nyx_assassin", "batrider", "dark_willow", "mirana", "techies", "spirit_breaker"],
+      5: ["crystal_maiden", "bane", "shadow_demon", "phoenix", "lich", "disruptor", "oracle", "treant", "warlock", "witch_doctor", "jakiro", "dazzle"],
+    };
+
+    const GLOBAL_POOL = {
+      1: { S: ["antimage", "juggernaut"], A: ["phantom_lancer", "troll_warlord"], B: ["bloodseeker", "riki"], C: ["spectre", "clinkz"] },
+      2: { S: ["tinker", "huskar"], A: ["obsidian_destroyer", "sniper"], B: ["void_spirit", "death_prophet"], C: ["pugna", "razor"] },
+      3: { S: ["enigma", "dark_seer"], A: ["night_stalker", "necrolyte"], B: ["abaddon", "primal_beast"], C: ["magnataur", "bristleback"] },
+      4: { S: ["pudge", "skywrath_mage"], A: ["earth_spirit", "grimstroke"], B: ["keeper_of_the_light", "weaver"], C: ["vengefulspirit", "shadow_shaman"] },
+      5: { S: ["chen", "ringmaster"], A: ["elder_titan", "undying"], B: ["silencer", "venomancer"], C: ["enchantress", "winter_wyvern"] },
+    };
+
+    const REAL_741_POOL_NAMES = {
+      1: ["小小", "凯", "风行者", "炼金术士", "齐天大圣", "琼英碧灵", "影魔", "德鲁伊", "熊战士", "恐怖利刃", "虚空假面", "露娜", "噬魂鬼", "卓尔游侠", "瘟疫法师", "末日使者", "兽王", "圣堂刺客", "编织者", "矮人直升机", "幻影长矛手", "龙骑士", "先知", "美杜莎", "克林克兹", "娜迦海妖", "变体精灵", "幻影刺客", "玛西", "钢背兽", "主宰", "冥界亚龙", "冥魂大帝", "复仇之魂", "米波", "斯温", "育母蜘蛛", "亚巴顿", "剃刀", "血魔", "巨魔战将", "幽鬼", "斯拉克", "昆卡", "暗夜魔王", "混沌骑士", "痛苦女王", "破晓辰星", "米拉娜", "风暴之灵"],
+      2: ["石鳞剑士", "灰烬之灵", "风暴之灵", "帕克", "虚无之灵", "痛苦女王", "祈求者", "沙王", "电炎绝手", "兽王", "冥界亚龙", "昆卡", "斯拉达", "凯", "齐天大圣", "哈斯卡", "拉席克", "獣", "小小", "狙击手", "死亡先知", "光之守卫", "宙斯", "暗夜魔王", "修补匠", "蝙蝠骑士", "钢背兽", "风行者", "先知", "剃刀", "影魔", "撼地者", "朗戈", "狼人", "伐木机", "司夜刺客", "大地之灵", "德鲁伊", "斯拉克", "末日使者", "潮汐猎人", "瘟疫法师", "米波"],
+      3: ["斧王", "末日使者", "朗戈", "潮汐猎人", "伐木机", "孽主", "斯拉达", "破晓辰星", "兽王", "石鳞剑士", "钢背兽", "玛尔斯", "蝙蝠骑士", "半人马战行者", "酒仙", "獣", "狼人", "暗夜魔王", "谜团", "冥界亚龙", "马格纳斯", "黑暗贤者", "剃刀", "沙王", "昆卡", "死亡先知", "电炎绝手", "不朽尸王", "全能骑士", "凤凰", "虚无之灵", "军团指挥官", "炼金术士", "瘟疫法师", "剧毒术士", "拉比克", "祸乱之源", "维萨吉", "风行者", "齐天大圣", "龙骑士"],
+      4: ["森海飞霞", "拉比克", "莱恩", "光之守卫", "巨牙海民", "发条技师", "工程师", "暗影恶魔", "风行者", "暗影萨满", "天涯墨客", "司夜刺客", "艾欧", "蝙蝠骑士", "邪影芳灵", "魅惑魔女", "小小", "百戏大王", "玛西", "沉默术士", "天怒法师", "电炎绝手", "裂魂人", "朗戈", "祸乱之源", "拉席克", "撼地者", "琼英碧灵", "齐天大圣", "先知", "大地之灵", "术士", "帕吉", "米拉娜", "伐木机", "凤凰", "寒冬飞龙", "德鲁伊", "杰奇洛", "编织者", "虚空假面", "赏金猎人", "陈"],
+      5: ["凤凰", "巫妖", "剧毒术士", "魅惑魔女", "沉默术士", "树精卫士", "寒冬飞龙", "祸乱之源", "术士", "杰奇洛", "发条技师", "工程师", "巨牙海民", "天涯墨客", "森海飞霞", "拉比克", "神谕者", "暗影恶魔", "陈", "戴泽", "蝙蝠骑士", "巫医", "水晶室女", "百戏大王", "米拉娜", "艾欧", "远古冰魄", "暗影萨满", "宙斯", "干扰者", "莱恩", "司夜刺客", "电炎绝手", "上古巨神", "先知", "帕格纳", "不朽尸王", "死亡先知", "光之守卫", "全能骑士", "哈斯卡", "小小", "斧王", "朗戈", "玛西", "琼英碧灵", "破晓辰星", "编织者", "风行者", "食人魔魔法师"],
+    };
+
+    const roles = ["1", "2", "3", "4", "5", "flex"];
+    const roleNames = { 1: "1号位", 2: "2号位", 3: "3号位", 4: "4号位", 5: "5号位", flex: "摇摆位" };
+    const tiers = ["S", "A", "B", "C"];
+    const laneLabels = { safe: "优势路", mid: "中路", off: "劣势路" };
+    const laneOrderByFaction = {
+      radiant: ["safe", "mid", "off"],
+      dire: ["off", "mid", "safe"],
+    };
+
+    let state = {
+      page: "setup",
+      config: { faction: "radiant", pickOrder: "first", myTeam: "XG", enemyTeam: "VG" },
+      uploads: { myTeam: "", enemyTeam: "" },
+      activePlanId: 1,
+      nextPlanId: 2,
+      plans: [{ id: 1, name: "方案 1", steps: [], laneAssignments: {} }],
+      selectedHeroIds: new Set(),
+      pools: null,
+    };
+
+    const app = document.getElementById("app");
+
+    function hero(id) {
+      return heroById.get(id) || { id, name: id, cn: id, roles: [] };
+    }
+
+    function imageUrl(heroId) {
+      return `https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/heroes/${heroId}.png`;
+    }
+
+    function displayName(heroObj) {
+      return heroObj.cn || heroObj.name;
+    }
+
+    function initials(heroObj) {
+      return (heroObj.cn || heroObj.name || "?").slice(0, 2);
+    }
+
+    function createInitialDraftState() {
+      state.activePlanId = 1;
+      state.nextPlanId = 2;
+      state.plans = [{ id: 1, name: "方案 1", steps: [], laneAssignments: {} }];
+      state.selectedHeroIds = new Set();
+      const myPool = buildPoolData(state.config.myTeam);
+      const enemyPool = buildPoolData(state.config.enemyTeam);
+      state.pools = {
+        my: myPool,
+        enemy: enemyPool,
+        other: buildOtherHeroPool(buildReal741Pool(), myPool),
+      };
+    }
+
+    function blankPool() {
+      return {
+        1: { S: [], A: [], B: [], C: [] },
+        2: { S: [], A: [], B: [], C: [] },
+        3: { S: [], A: [], B: [], C: [] },
+        4: { S: [], A: [], B: [], C: [] },
+        5: { S: [], A: [], B: [], C: [] },
+        flex: { S: [], A: [], B: [], C: [] },
+      };
+    }
+
+    function buildPoolData(teamId) {
+      if (TEAM_POOLS[teamId]) return buildPoolFromRaw(TEAM_POOLS[teamId]);
+      if (teamId === "NONE") return buildGeneratedPool(2);
+      if (teamId === "CUSTOM") return buildGeneratedPool(5);
+      return buildGeneratedPool(teamId.length);
+    }
+
+    function buildGeneratedPool(seed) {
+      const raw = {};
+      for (const role of [1, 2, 3, 4, 5]) {
+        const list = rotate(FALLBACK_BY_ROLE[role], seed + role);
+        raw[role] = {
+          S: list.slice(0, 3),
+          A: list.slice(3, 6),
+          B: list.slice(6, 9),
+          C: list.slice(9, 12),
+        };
+      }
+      return buildPoolFromRaw(raw);
+    }
+
+    function rotate(items, amount) {
+      const offset = amount % items.length;
+      return [...items.slice(offset), ...items.slice(0, offset)];
+    }
+
+    function buildPoolFromRaw(raw) {
+      const pool = blankPool();
+      const appearances = new Map();
+      const bestTier = new Map();
+      const tierWeight = { S: 4, A: 3, B: 2, C: 1 };
+
+      for (const role of [1, 2, 3, 4, 5]) {
+        for (const tier of tiers) {
+          for (const heroId of raw[role]?.[tier] || []) {
+            const heroObj = hero(heroId);
+            pool[role][tier].push(heroObj);
+            if (!appearances.has(heroId)) appearances.set(heroId, new Set());
+            appearances.get(heroId).add(role);
+            if (!bestTier.has(heroId) || tierWeight[tier] > tierWeight[bestTier.get(heroId)]) {
+              bestTier.set(heroId, tier);
+            }
+          }
+        }
+      }
+
+      for (const [heroId, roleSet] of appearances) {
+        if (roleSet.size >= 2) {
+          pool.flex[bestTier.get(heroId)].push(hero(heroId));
+        }
+      }
+
+      return pool;
+    }
+
+    function buildReal741Pool() {
+      const pool = {};
+      for (const [role, heroNames] of Object.entries(REAL_741_POOL_NAMES)) {
+        pool[role] = heroNames.map((heroName) => heroFromRealName(heroName));
+      }
+      return pool;
+    }
+
+    function heroFromRealName(heroName) {
+      const heroId = HERO_NAME_TO_ID.get(heroName);
+      const baseHero = heroId ? hero(heroId) : { id: heroName, name: heroName, roles: [] };
+      return { ...baseHero, cn: heroName };
+    }
+
+    function buildOtherHeroPool(allHeroesByRole, ownPool) {
+      const ownHeroIds = collectPoolHeroIds(ownPool);
+      const otherPool = {};
+
+      for (const [role, heroes] of Object.entries(allHeroesByRole)) {
+        otherPool[role] = {
+          flat: heroes
+            .filter((heroObj) => !ownHeroIds.has(heroObj.id))
+            .slice()
+            .sort((left, right) => displayName(left).localeCompare(displayName(right), "zh-CN")),
+        };
+      }
+      otherPool.flex = { flat: [] };
+
+      return otherPool;
+    }
+
+    function collectPoolHeroIds(pool) {
+      const ids = new Set();
+      if (!pool) return ids;
+
+      for (const roleValue of Object.values(pool)) {
+        if (Array.isArray(roleValue?.flat)) {
+          for (const heroObj of roleValue.flat) ids.add(heroObj.id);
+          continue;
+        }
+
+        for (const heroes of Object.values(roleValue || {})) {
+          if (!Array.isArray(heroes)) continue;
+          for (const heroObj of heroes) ids.add(heroObj.id);
+        }
+      }
+
+      return ids;
+    }
+
+    function getActivePlan() {
+      return state.plans.find((plan) => plan.id === state.activePlanId);
+    }
+
+    function getDraftTurn(step) {
+      const item = DRAFT_SEQUENCE[step - 1];
+      if (!item) return null;
+      const side = item.pickOrder === state.config.pickOrder
+        ? state.config.faction
+        : state.config.faction === "radiant" ? "dire" : "radiant";
+      return { step, action: item.action, side };
+    }
+
+    function getCurrentTurn() {
+      const activePlan = getActivePlan();
+      return getDraftTurn((activePlan?.steps.length || 0) + 1);
+    }
+
+    function sideLabel(side) {
+      return side === state.config.faction ? "我方" : "对方";
+    }
+
+    function factionLabel(side) {
+      return side === "radiant" ? "天辉" : "夜魇";
+    }
+
+    function pickOrderLabel(order) {
+      return order === "first" ? "先选" : "后选";
+    }
+
+    function selectHero(heroId) {
+      const activePlan = getActivePlan();
+      if (!activePlan) return;
+      if (state.selectedHeroIds.has(heroId)) return;
+      if (activePlan.steps.length >= DRAFT_SEQUENCE.length) return;
+
+      const turn = getCurrentTurn();
+      if (!turn) return;
+      const selectedHero = hero(heroId);
+      activePlan.steps.push({ ...turn, hero: selectedHero });
+      if (turn.action === "Pick") {
+        const sidePool = turn.side === state.config.faction ? state.pools.my : state.pools.enemy;
+        activePlan.laneAssignments = {
+          ...(activePlan.laneAssignments || {}),
+          [heroId]: getPreferredLaneForHero(heroId, sidePool) || defaultLaneForHero(selectedHero),
+        };
+      }
+      state.selectedHeroIds.add(heroId);
+      render();
+    }
+
+    function cancelFromStep(startStep) {
+      const activePlan = getActivePlan();
+      if (!activePlan) return;
+
+      activePlan.steps = activePlan.steps.filter((step) => step.step < startStep);
+      const remainingHeroIds = new Set(activePlan.steps.map((step) => step.hero.id));
+      activePlan.laneAssignments = Object.fromEntries(
+        Object.entries(activePlan.laneAssignments || {}).filter(([heroId]) =>
+          remainingHeroIds.has(heroId),
+        ),
+      );
+      state.selectedHeroIds = new Set(activePlan.steps.map((step) => step.hero.id));
+      render();
+    }
+
+    function createBranch() {
+      const activePlan = getActivePlan();
+      if (!activePlan) return;
+
+      const newPlan = {
+        id: state.nextPlanId,
+        name: `方案 ${state.nextPlanId}`,
+        steps: activePlan.steps.map((step) => ({ ...step, hero: { ...step.hero } })),
+        laneAssignments: { ...(activePlan.laneAssignments || {}) },
+      };
+
+      state.nextPlanId += 1;
+      state.plans.push(newPlan);
+      state.activePlanId = newPlan.id;
+      state.selectedHeroIds = new Set(newPlan.steps.map((step) => step.hero.id));
+      render();
+    }
+
+    function activatePlan(planId) {
+      const plan = state.plans.find((item) => item.id === planId);
+      if (!plan) return;
+      state.activePlanId = planId;
+      state.selectedHeroIds = new Set(plan.steps.map((step) => step.hero.id));
+      render();
+    }
+
+    function undoLastStep() {
+      const activePlan = getActivePlan();
+      if (!activePlan || activePlan.steps.length === 0) return;
+      const removedStep = activePlan.steps.pop();
+      if (removedStep?.hero?.id && activePlan.laneAssignments) {
+        delete activePlan.laneAssignments[removedStep.hero.id];
+      }
+      state.selectedHeroIds = new Set(activePlan.steps.map((step) => step.hero.id));
+      render();
+    }
+
+    function getLineup(plan) {
+      const picks = plan.steps.filter((step) => step.action === "Pick");
+      return {
+        own: picks.filter((step) => step.side === state.config.faction).map((step) => step.hero),
+        enemy: picks.filter((step) => step.side !== state.config.faction).map((step) => step.hero),
+      };
+    }
+
+    function getLaneOrder(faction) {
+      return (laneOrderByFaction[faction] || laneOrderByFaction.radiant).map((id) => ({
+        id,
+        label: laneLabels[id],
+      }));
+    }
+
+    function defaultLaneForHero(heroObj) {
+      const heroRoles = heroObj.roles || [];
+      if (heroRoles.includes(2)) return "mid";
+      if (heroRoles.includes(1) || heroRoles.includes(5)) return "safe";
+      return "off";
+    }
+
+    function getPreferredLaneForHero(heroId, pool) {
+      if (!pool) return null;
+
+      const tierWeight = { S: 4, A: 3, B: 2, C: 1 };
+      const roleScores = new Map();
+
+      for (const role of ["1", "2", "3", "4", "5"]) {
+        const roleValue = pool[role];
+        if (!roleValue) continue;
+
+        if (Array.isArray(roleValue.flat)) {
+          const count = roleValue.flat.filter((heroObj) => heroObj.id === heroId).length;
+          if (count > 0) roleScores.set(role, (roleScores.get(role) || 0) + count);
+          continue;
+        }
+
+        for (const [tier, heroes] of Object.entries(roleValue)) {
+          if (!Array.isArray(heroes)) continue;
+          const count = heroes.filter((heroObj) => heroObj.id === heroId).length;
+          if (count > 0) {
+            roleScores.set(role, (roleScores.get(role) || 0) + count * (tierWeight[tier] || 1));
+          }
+        }
+      }
+
+      if (roleScores.size === 0) return null;
+
+      const bestRole = [...roleScores.entries()].sort((left, right) => {
+        if (right[1] !== left[1]) return right[1] - left[1];
+        return Number(left[0]) - Number(right[0]);
+      })[0][0];
+
+      return laneFromRole(bestRole);
+    }
+
+    function laneFromRole(role) {
+      if (role === "2") return "mid";
+      if (role === "1" || role === "5") return "safe";
+      return "off";
+    }
+
+    function getLaneGroups(plan, faction) {
+      const assignments = plan.laneAssignments || {};
+      const picks = plan.steps.filter((step) => step.action === "Pick" && step.side === faction);
+
+      return getLaneOrder(faction).map((lane) => ({
+        ...lane,
+        heroes: picks
+          .map((step) => step.hero)
+          .filter((heroObj) => (assignments[heroObj.id] || defaultLaneForHero(heroObj)) === lane.id),
+      }));
+    }
+
+    function moveHeroToLane(heroId, laneId) {
+      if (!laneLabels[laneId]) return;
+      const activePlan = getActivePlan();
+      if (!activePlan) return;
+
+      const isPickedHero = activePlan.steps.some(
+        (step) => step.action === "Pick" && step.hero.id === heroId,
+      );
+      if (!isPickedHero) return;
+
+      activePlan.laneAssignments = {
+        ...(activePlan.laneAssignments || {}),
+        [heroId]: laneId,
+      };
+      render();
+    }
+
+    function stableHeroScore(heroId) {
+      let score = 0;
+      for (const char of heroId) score += char.charCodeAt(0);
+      return (score % 23) - 11;
+    }
+
+    function counterLevel(heroId) {
+      const activePlan = getActivePlan();
+      const seed = activePlan?.steps.length || 0;
+      const bucket = Math.abs(stableHeroScore(`${heroId}:${seed}`)) % 10;
+      if (bucket <= 1) return 0;
+      const level = (bucket % 3) + 1;
+      return bucket % 2 === 0 ? level : -level;
+    }
+
+    function estimateLane(laneName, ownHeroes, enemyHeroes) {
+      if (ownHeroes.length === 0 || enemyHeroes.length === 0) {
+        return { laneName, delta: 0, label: "待定" };
+      }
+
+      const ownScore = ownHeroes.reduce((total, item) => total + stableHeroScore(item.id), 0);
+      const enemyScore = enemyHeroes.reduce((total, item) => total + stableHeroScore(item.id), 0);
+      const delta = Math.max(-18, Math.min(18, ownScore - enemyScore));
+      return {
+        laneName,
+        delta,
+        label: delta > 3 ? "优势" : delta < -3 ? "劣势" : "均势",
+      };
+    }
+
+    function assignRoles(picks) {
+      const assigned = { 1: null, 2: null, 3: null, 4: null, 5: null };
+      for (const pick of picks) {
+        const preferred = pick.roles?.length ? pick.roles : [1, 2, 3, 4, 5];
+        const role = preferred.find((candidate) => !assigned[candidate])
+          || [1, 2, 3, 4, 5].find((candidate) => !assigned[candidate]);
+        if (role) assigned[role] = pick;
+      }
+      return assigned;
+    }
+
+    function lanePlan(plan) {
+      const enemyFaction = state.config.faction === "radiant" ? "dire" : "radiant";
+      const ownGroups = Object.fromEntries(
+        getLaneGroups(plan, state.config.faction).map((lane) => [lane.id, lane.heroes]),
+      );
+      const enemyGroups = Object.fromEntries(
+        getLaneGroups(plan, enemyFaction).map((lane) => [lane.id, lane.heroes]),
+      );
+
+      return [
+        { name: "优势路", own: ownGroups.safe || [], enemy: enemyGroups.off || [], ownLabel: "我方优势路", enemyLabel: "对方劣势路" },
+        { name: "中路", own: ownGroups.mid || [], enemy: enemyGroups.mid || [], ownLabel: "我方中路", enemyLabel: "对方中路" },
+        { name: "劣势路", own: ownGroups.off || [], enemy: enemyGroups.safe || [], ownLabel: "我方劣势路", enemyLabel: "对方优势路" },
+      ];
+    }
+
+    function topbarHTML() {
+      const activePlan = getActivePlan();
+      const turn = getCurrentTurn();
+      const status = state.page === "bp" && turn
+        ? `${activePlan.name} / 第 ${String(turn.step).padStart(2, "0")} 手 / ${sideLabel(turn.side)} ${turn.action}`
+        : state.page === "overview"
+          ? `共 ${state.plans.length} 个方案`
+          : "新建 BP";
+
+      return `
+        <div class="topbar">
+          <div class="brand">
+            <div class="brand-mark">BP</div>
+            <div>
+              <h1>DOTA2 BP 交互模拟</h1>
+              <span>${TEAMS[state.config.myTeam].name} vs ${TEAMS[state.config.enemyTeam].name}</span>
+            </div>
+          </div>
+          <div class="top-status">
+            <span class="chip ${state.config.faction === "radiant" ? "green" : "red"}">${factionLabel(state.config.faction)}</span>
+            <span class="chip active">${pickOrderLabel(state.config.pickOrder)}</span>
+            <span>${status}</span>
+          </div>
+          <div class="top-actions">
+            ${state.page !== "setup" ? '<button class="button ghost" data-action="go-setup">配置</button>' : ""}
+            ${state.page === "overview" ? '<button class="button primary" data-action="go-bp">返回 BP</button>' : ""}
+          </div>
+        </div>
+      `;
+    }
+
+    function render() {
+      app.innerHTML = topbarHTML() + `<div class="shell">${renderPage()}</div>`;
+      bindEvents();
+      bindImageFallbacks();
+    }
+
+    function renderPage() {
+      if (state.page === "setup") return renderSetup();
+      if (state.page === "overview") return renderOverview();
+      return renderDraft();
+    }
+
+    function renderSetup() {
+      return `
+        <section class="setup-screen">
+          <div class="setup-hero">
+            <div>
+              <h2>把 BP 过程拆成可复盘、可分支、可比较的决策面板</h2>
+              <p>入口确定阵营、先后手和战队数据；BP 页面逐手选择并复制分支；总览页按三路对位比较所有方案。</p>
+              <div class="draft-preview">
+                <div class="preview-row">
+                  <div class="preview-label">我方阵容</div>
+                  ${[1, 2, 3, 4, 5].map((item) => `<div class="preview-card">${item}号位</div>`).join("")}
+                </div>
+                <div class="preview-row">
+                  <div class="preview-label">BP 流程</div>
+                  ${["Ban", "Ban", "Pick", "Pick", "分支"].map((item) => `<div class="preview-card">${item}</div>`).join("")}
+                </div>
+                <div class="preview-row">
+                  <div class="preview-label">对方阵容</div>
+                  ${[1, 2, 3, 4, 5].map((item) => `<div class="preview-card">${item}号位</div>`).join("")}
+                </div>
+              </div>
+            </div>
+            <div class="data-status">
+              <div class="status-card"><b>英雄池</b><span>预置战队自动加载</span></div>
+              <div class="status-card"><b>Excel</b><span>自定义入口已预留</span></div>
+              <div class="status-card"><b>克制</b><span>点击后动态标记</span></div>
+              <div class="status-card"><b>总览</b><span>三路对位评分</span></div>
+            </div>
+          </div>
+
+          <div class="setup-panel">
+            <div class="panel-title">
+              <h2>赛前配置</h2>
+              <span class="minor">常见战队可直接使用，未收录战队可上传英雄池</span>
+            </div>
+
+            <div class="field-grid">
+              <div class="field">
+                <label>阵营</label>
+                <div class="segmented">
+                  <button class="seg-button ${state.config.faction === "radiant" ? "active" : ""}" data-action="set-faction" data-value="radiant">天辉</button>
+                  <button class="seg-button ${state.config.faction === "dire" ? "active" : ""}" data-action="set-faction" data-value="dire">夜魇</button>
+                </div>
+              </div>
+              <div class="field">
+                <label>选边顺序</label>
+                <div class="segmented">
+                  <button class="seg-button ${state.config.pickOrder === "first" ? "active" : ""}" data-action="set-pick-order" data-value="first">先选</button>
+                  <button class="seg-button ${state.config.pickOrder === "second" ? "active" : ""}" data-action="set-pick-order" data-value="second">后选</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="field-grid">
+              <div class="field">
+                <label>我方战队</label>
+                <select data-action="set-team" data-team-side="myTeam">
+                  ${teamOptions(state.config.myTeam)}
+                </select>
+              </div>
+              <div class="field">
+                <label>对方战队</label>
+                <select data-action="set-team" data-team-side="enemyTeam">
+                  ${teamOptions(state.config.enemyTeam)}
+                </select>
+              </div>
+            </div>
+
+            <div class="field-grid">
+              <div class="field">
+                <label>我方英雄池 Excel</label>
+                <div class="file-box">
+                  <span>${state.uploads.myTeam || "选择 .xlsx / .csv 文件"}</span>
+                  <input type="file" accept=".xlsx,.xls,.csv" data-action="upload-pool" data-team-side="myTeam">
+                </div>
+              </div>
+              <div class="field">
+                <label>对方英雄池 Excel</label>
+                <div class="file-box">
+                  <span>${state.uploads.enemyTeam || "选择 .xlsx / .csv 文件"}</span>
+                  <input type="file" accept=".xlsx,.xls,.csv" data-action="upload-pool" data-team-side="enemyTeam">
+                </div>
+              </div>
+            </div>
+
+            <div class="field-grid single">
+              <div class="field">
+                <label>数据加载状态</label>
+                <div class="data-status">
+                  <div class="status-card"><b>${TEAMS[state.config.myTeam].type === "preset" ? "已收录" : "可空置"}</b><span>我方英雄池</span></div>
+                  <div class="status-card"><b>${TEAMS[state.config.enemyTeam].type === "preset" ? "已收录" : "可空置"}</b><span>对方英雄池</span></div>
+                  <div class="status-card"><b>已加载</b><span>英雄克制矩阵</span></div>
+                  <div class="status-card"><b>已加载</b><span>对线数据库</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="setup-submit">
+              <button class="button ghost" data-action="reset-setup">重置</button>
+              <button class="button primary" data-action="start-draft">确定，进入 BP</button>
+            </div>
+          </div>
+        </section>
+      `;
+    }
+
+    function teamOptions(selected) {
+      return Object.entries(TEAMS)
+        .map(([id, team]) => `<option value="${id}" ${id === selected ? "selected" : ""}>${team.name}</option>`)
+        .join("");
+    }
+
+    function renderDraft() {
+      const activePlan = getActivePlan();
+      const turn = getCurrentTurn();
+      const lineup = getLineup(activePlan);
+
+      return `
+        <section class="draft-screen">
+          <main class="draft-main">
+            <div class="draft-summary">
+              ${renderSideSummary("我方", state.config.faction, activePlan)}
+              <div class="turn-card">
+                ${turn ? `<div><strong>${String(turn.step).padStart(2, "0")}</strong><span>${sideLabel(turn.side)} ${turn.action}</span></div>` : `<div><strong>24</strong><span>BP 完成</span></div>`}
+              </div>
+              ${renderSideSummary("对方", state.config.faction === "radiant" ? "dire" : "radiant", activePlan)}
+            </div>
+
+            <div class="hero-board">
+              ${renderPoolRow(`我方英雄池`, TEAMS[state.config.myTeam].name, state.pools.my)}
+              ${renderPoolRow(`对方英雄池`, TEAMS[state.config.enemyTeam].name, state.pools.enemy)}
+              ${renderPoolRow("其他英雄", "Global Meta", state.pools.other)}
+            </div>
+
+            <div class="draft-footer">
+              <div class="legend">
+                <span class="legend-item"><span class="counter-tri good"></span>克制当前对方已选</span>
+                <span class="legend-item"><span class="counter-tri bad"></span>被当前对方已选克制</span>
+                <span>灰色英雄在当前方案中已被选或被 Ban</span>
+              </div>
+              <div class="top-actions">
+                <button class="button ghost" data-action="undo-step" ${activePlan.steps.length === 0 ? "disabled" : ""}>撤销</button>
+                <button class="button success" data-action="finish-draft">完成</button>
+              </div>
+            </div>
+          </main>
+
+          <aside class="timeline">
+            <div class="timeline-head">
+              <h2>BP 方案分支</h2>
+              <button class="button primary" data-action="new-branch">新方案</button>
+            </div>
+            <div class="timeline-list">
+              ${renderDraftTrack(activePlan)}
+            </div>
+            <div class="scheme-panel">
+              <span class="minor">切换方案</span>
+              <div class="scheme-list">
+                ${state.plans.map((plan) => `<button class="chip ${plan.id === state.activePlanId ? "active" : ""}" data-action="switch-plan" data-plan-id="${plan.id}">${plan.id}</button>`).join("")}
+              </div>
+            </div>
+          </aside>
+        </section>
+      `;
+    }
+
+    function renderDraftTrack(activePlan) {
+      return `
+        <div class="draft-track">
+          <div class="track-head">
+            <span class="track-label radiant">${factionLabel("radiant")}</span>
+            <span></span>
+            <span class="track-label dire">${factionLabel("dire")}</span>
+          </div>
+          ${DRAFT_SEQUENCE.map((_, index) => renderTurnRow(index + 1, activePlan)).join("")}
+        </div>
+      `;
+    }
+
+    function renderSideSummary(label, faction, plan) {
+      return `
+        <div class="side-block">
+          <h2><span>${label}</span><span>${factionLabel(faction)}</span></h2>
+          <div class="lane-strip">
+            ${getLaneGroups(plan, faction).map((lane) => renderLaneDrop(lane)).join("")}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderLaneDrop(lane) {
+      return `
+        <div class="lane-drop" data-action="lane-drop" data-lane-id="${lane.id}">
+          <div class="lane-drop-head">
+            <span>${lane.label}</span>
+            <span>${lane.heroes.length}</span>
+          </div>
+          <div class="lane-heroes">
+            ${lane.heroes.length > 0 ? lane.heroes.map((heroObj) => renderLaneHero(heroObj)).join("") : '<span class="lane-empty">拖入英雄</span>'}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderLaneHero(heroObj) {
+      return `
+        <button class="lane-hero" draggable="true" data-action="drag-lane-hero" data-hero-id="${heroObj.id}" title="拖动调整分路：${displayName(heroObj)} / ${heroObj.name}">
+          <img src="${imageUrl(heroObj.id)}" alt="${heroObj.name}">
+        </button>
+      `;
+    }
+
+    function renderPoolRow(title, subtitle, pool) {
+      return `
+        <div class="pool-row">
+          <div class="pool-label">
+            <b>${title}</b>
+            <span>${subtitle}<br>1-5号位 + 摇摆位</span>
+          </div>
+          ${roles.map((role) => renderRolePanel(role, pool[role])).join("")}
+        </div>
+      `;
+    }
+
+    function renderRolePanel(role, tierMap) {
+      tierMap ||= { flat: [] };
+      const isFlat = Array.isArray(tierMap.flat);
+      const count = isFlat
+        ? tierMap.flat.length
+        : tiers.reduce((total, tier) => total + (tierMap[tier]?.length || 0), 0);
+      return `
+        <div class="role-panel">
+          <div class="role-head"><span>${roleNames[role]}</span><span>${count}</span></div>
+          <div class="role-body">
+            ${isFlat ? renderFlatHeroList(tierMap.flat) : tiers.map((tier) => renderTierLine(tier, tierMap[tier] || [])).join("")}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderFlatHeroList(heroes) {
+      return `
+        <div class="hero-wrap">
+          ${heroes.map((heroObj) => renderHeroCard(heroObj)).join("")}
+        </div>
+      `;
+    }
+
+    function renderTierLine(tier, heroes) {
+      if (heroes.length === 0) return "";
+      return `
+        <div class="tier-line">
+          <div class="tier-badge ${tier.toLowerCase()}">${tier}</div>
+          <div class="hero-wrap">
+            ${heroes.map((heroObj) => renderHeroCard(heroObj)).join("")}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderHeroCard(heroObj) {
+      const selected = state.selectedHeroIds.has(heroObj.id);
+      const level = selected ? 0 : counterLevel(heroObj.id);
+      const mark = level === 0 ? "" : `
+        <span class="counter-mark">
+          ${Array.from({ length: Math.abs(level) }).map(() => `<span class="counter-tri ${level > 0 ? "good" : "bad"}"></span>`).join("")}
+        </span>
+      `;
+
+      return `
+        <button class="hero-card ${selected ? "selected" : ""}" data-action="select-hero" data-hero-id="${heroObj.id}" title="${selected ? "已在当前方案中选择：" : ""}${displayName(heroObj)} / ${heroObj.name}">
+          <img src="${imageUrl(heroObj.id)}" alt="${heroObj.name}">
+          <span class="fallback">${initials(heroObj)}</span>
+          ${mark}
+        </button>
+      `;
+    }
+
+    function renderTurnRow(step, activePlan) {
+      const turn = getDraftTurn(step);
+      const stepData = activePlan.steps.find((item) => item.step === step);
+      const current = step === activePlan.steps.length + 1;
+      const future = step > activePlan.steps.length + 1;
+      const isRadiant = turn.side === "radiant";
+      const actionType = turn.action.toLowerCase();
+      const radiantSlot = isRadiant ? renderTrackSlot(stepData, turn) : "";
+      const direSlot = !isRadiant ? renderTrackSlot(stepData, turn) : "";
+      const truncateAttrs = stepData
+        ? ` data-action="truncate-step" data-step="${step}" title="双击从第 ${String(step).padStart(2, "0")} 手开始取消后续选择"`
+        : "";
+
+      return `
+        <div class="track-row ${stepData ? "done" : ""} ${current ? "current" : ""} ${future ? "future" : ""}"${truncateAttrs}>
+          <div class="track-slot-wrap radiant">${radiantSlot}</div>
+          <span class="track-branch left ${isRadiant ? "" : "muted"}"></span>
+          <span class="track-number ${actionType}">${step}</span>
+          <span class="track-branch right ${isRadiant ? "muted" : ""}"></span>
+          <div class="track-slot-wrap dire">${direSlot}</div>
+        </div>
+      `;
+    }
+
+    function renderTrackSlot(stepData, turn) {
+      if (!stepData) return "";
+
+      const actionType = turn.action.toLowerCase();
+      const heroObj = stepData.hero;
+      return `
+        <div class="track-slot ${turn.side} filled slot-${actionType}" title="${String(turn.step).padStart(2, "0")} ${turn.action} ${factionLabel(turn.side)}：${displayName(heroObj)} / ${heroObj.name}">
+          <span class="track-fallback">${initials(heroObj)}</span>
+          <img src="${imageUrl(heroObj.id)}" alt="${heroObj.name}">
+          ${turn.action === "Ban" ? '<span class="ban-cross" aria-hidden="true"></span>' : ""}
+        </div>
+      `;
+    }
+
+    function renderOverview() {
+      if (state.plans.length === 0) {
+        return `<section class="overview-screen"><div class="empty-state">暂无方案</div></section>`;
+      }
+
+      return `
+        <section class="overview-screen">
+          <div class="overview-toolbar">
+            <div>
+              <h2>BP 方案总览</h2>
+              <span class="minor">${TEAMS[state.config.myTeam].name} vs ${TEAMS[state.config.enemyTeam].name} / ${factionLabel(state.config.faction)} / ${pickOrderLabel(state.config.pickOrder)}</span>
+            </div>
+            <div class="top-actions">
+              <button class="button primary" data-action="go-bp">继续编辑</button>
+            </div>
+          </div>
+          ${state.plans.map(renderSchemeRow).join("")}
+        </section>
+      `;
+    }
+
+    function renderSchemeRow(plan) {
+      const lanes = lanePlan(plan);
+      const estimates = lanes.map((lane) => estimateLane(lane.name, lane.own, lane.enemy));
+      const total = estimates.reduce((sum, estimate) => sum + estimate.delta, 0);
+      const scoreClass = total > 4 ? "" : total < -4 ? "bad" : "even";
+
+      return `
+        <div class="scheme-row">
+          <div class="scheme-meta">
+            <div>
+              <h3>${plan.name}</h3>
+              <span class="chip ${scoreClass === "" ? "green" : scoreClass === "bad" ? "red" : "active"}">${plan.steps.length}/24 手</span>
+            </div>
+            <p>${plan.steps.length >= 24 ? "完整方案" : "未完成方案"}，已记录 ${plan.steps.filter((step) => step.action === "Pick").length} 个 Pick。</p>
+          </div>
+          <div class="lane-grid">
+            ${lanes.map((lane, index) => renderLaneCard(lane, estimates[index])).join("")}
+          </div>
+          <div class="score-box ${scoreClass}">
+            <strong>${total > 0 ? "+" : ""}${total}</strong>
+            <span>对线期综合分</span>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderLaneCard(lane, estimate) {
+      const estimateClass = estimate.label === "优势" ? "good" : estimate.label === "劣势" ? "bad" : "even";
+      return `
+        <div class="lane-card">
+          <div class="lane-title">
+            <span>${lane.name}</span>
+            <span class="${estimateClass}">${estimate.label} ${estimate.delta > 0 ? "+" : ""}${estimate.delta}</span>
+          </div>
+          ${renderLaneSide(lane.own, lane.ownLabel)}
+          <div class="lane-vs">对位</div>
+          ${renderLaneSide(lane.enemy, lane.enemyLabel)}
+        </div>
+      `;
+    }
+
+    function renderLaneSide(heroes, label) {
+      const cellIndexes = heroes.length <= 1 ? [0] : [0, 1];
+      const cells = cellIndexes.map((index) => renderTinyHero(heroes[index])).join("");
+      return `
+        <div class="lane-side ${heroes.length <= 1 ? "single" : ""}">
+          ${cells}
+          <div class="lane-text">${label}<span>${heroes.map(displayName).join(" + ") || "待定"}</span></div>
+        </div>
+      `;
+    }
+
+    function renderTinyHero(heroObj) {
+      if (!heroObj) return `<div class="tiny-hero">?</div>`;
+      return `<div class="tiny-hero" title="${heroObj.name}"><img src="${imageUrl(heroObj.id)}" alt="${heroObj.name}"></div>`;
+    }
+
+    function bindEvents() {
+      app.querySelectorAll("[data-action]").forEach((node) => {
+        const action = node.dataset.action;
+        if (action === "set-faction") {
+          node.addEventListener("click", () => {
+            state.config.faction = node.dataset.value;
+            render();
+          });
+        }
+        if (action === "set-pick-order") {
+          node.addEventListener("click", () => {
+            state.config.pickOrder = node.dataset.value;
+            render();
+          });
+        }
+        if (action === "set-team") {
+          node.addEventListener("change", () => {
+            state.config[node.dataset.teamSide] = node.value;
+            render();
+          });
+        }
+        if (action === "upload-pool") {
+          node.addEventListener("change", () => {
+            state.uploads[node.dataset.teamSide] = node.files?.[0]?.name || "";
+            if (node.dataset.teamSide === "myTeam") state.config.myTeam = "CUSTOM";
+            if (node.dataset.teamSide === "enemyTeam") state.config.enemyTeam = "CUSTOM";
+            render();
+          });
+        }
+        if (action === "reset-setup") {
+          node.addEventListener("click", () => {
+            state.config = { faction: "radiant", pickOrder: "first", myTeam: "XG", enemyTeam: "VG" };
+            state.uploads = { myTeam: "", enemyTeam: "" };
+            render();
+          });
+        }
+        if (action === "start-draft") {
+          node.addEventListener("click", () => {
+            createInitialDraftState();
+            state.page = "bp";
+            render();
+          });
+        }
+        if (action === "select-hero") {
+          node.addEventListener("click", () => selectHero(node.dataset.heroId));
+        }
+        if (action === "truncate-step") {
+          node.addEventListener("dblclick", () => cancelFromStep(Number(node.dataset.step)));
+        }
+        if (action === "drag-lane-hero") {
+          node.addEventListener("dragstart", (event) => {
+            event.dataTransfer.setData("text/plain", node.dataset.heroId);
+            event.dataTransfer.effectAllowed = "move";
+          });
+        }
+        if (action === "lane-drop") {
+          node.addEventListener("dragover", (event) => {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = "move";
+            node.classList.add("drag-over");
+          });
+          node.addEventListener("dragleave", () => {
+            node.classList.remove("drag-over");
+          });
+          node.addEventListener("drop", (event) => {
+            event.preventDefault();
+            node.classList.remove("drag-over");
+            const heroId = event.dataTransfer.getData("text/plain");
+            moveHeroToLane(heroId, node.dataset.laneId);
+          });
+        }
+        if (action === "new-branch") {
+          node.addEventListener("click", createBranch);
+        }
+        if (action === "switch-plan") {
+          node.addEventListener("click", () => activatePlan(Number(node.dataset.planId)));
+        }
+        if (action === "undo-step") {
+          node.addEventListener("click", undoLastStep);
+        }
+        if (action === "finish-draft") {
+          node.addEventListener("click", () => {
+            state.page = "overview";
+            render();
+          });
+        }
+        if (action === "go-bp") {
+          node.addEventListener("click", () => {
+            state.page = "bp";
+            render();
+          });
+        }
+        if (action === "go-setup") {
+          node.addEventListener("click", () => {
+            state.page = "setup";
+            render();
+          });
+        }
+      });
+    }
+
+    function bindImageFallbacks() {
+      app.querySelectorAll("img").forEach((img) => {
+        img.addEventListener("error", () => {
+          const card = img.closest(".hero-card");
+          if (card) card.classList.add("image-failed");
+          if (!card) img.style.display = "none";
+        });
+      });
+    }
+
+    render();
+  </script>
+</body>
+</html>
