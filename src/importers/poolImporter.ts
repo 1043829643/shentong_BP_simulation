@@ -20,11 +20,11 @@ export async function parseHeroPoolFile(file: File): Promise<ImportResult> {
 }
 
 async function parseExcel(file: File): Promise<RawRow[]> {
-  const buffer = await file.arrayBuffer();
+  const buffer = await readFileBuffer(file);
   const workbook = XLSX.read(buffer, { type: 'array' });
-  const firstSheet = workbook.SheetNames[0];
-  if (!firstSheet) throw new Error('Excel 中没有可读取的工作表');
-  return XLSX.utils.sheet_to_json<RawRow>(workbook.Sheets[firstSheet], { defval: '' });
+  const sheetName = workbook.SheetNames.find((name) => name.trim() === '英雄池汇总') || workbook.SheetNames[0];
+  if (!sheetName) throw new Error('Excel 中没有可读取的工作表');
+  return XLSX.utils.sheet_to_json<RawRow>(workbook.Sheets[sheetName], { defval: '' });
 }
 
 async function parseCsv(file: File): Promise<RawRow[]> {
@@ -51,29 +51,95 @@ async function readFileText(file: File): Promise<string> {
   });
 }
 
+async function readFileBuffer(file: File): Promise<ArrayBuffer> {
+  if (typeof file.arrayBuffer === 'function') return file.arrayBuffer();
+
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (reader.result instanceof ArrayBuffer) {
+        resolve(reader.result);
+        return;
+      }
+      reject(new Error('文件读取失败'));
+    };
+    reader.onerror = () => reject(new Error('文件读取失败'));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
 function normalizeRows(rows: RawRow[]): ImportResult {
+  if (rows.length === 0) return { pool: null, errors: ['文件为空或没有表头'], warnings: [] };
+  if (isWideHeroPool(rows)) return normalizeWideRows(rows);
+  return normalizeLongRows(rows);
+}
+
+function normalizeWideRows(rows: RawRow[]): ImportResult {
   const errors: string[] = [];
   const warnings: string[] = [];
-  const normalized: Array<{ heroName: string; role: string; tier?: string }> = [];
+  const normalized: Array<{ heroName: string; role: string; frequency: number }> = [];
+
+  rows.forEach((row, index) => {
+    const role = readField(row, ['位置', '常用位置', 'role', 'position', 'pos']);
+    if (!role) errors.push('第 ' + (index + 2) + ' 行缺少常用位置');
+    if (role && !['1', '2', '3', '4', '5'].includes(String(role).trim())) {
+      errors.push('第 ' + (index + 2) + ' 行常用位置必须是 1-5');
+    }
+
+    const heroIndexes = Object.keys(row)
+      .map((key) => key.match(/^英雄(\d+)$/))
+      .filter((match): match is RegExpMatchArray => Boolean(match))
+      .map((match) => Number(match[1]))
+      .sort((left, right) => left - right);
+
+    for (const heroIndex of heroIndexes) {
+      const heroName = readField(row, ['英雄' + heroIndex]);
+      if (!heroName) continue;
+      const usageText = readField(row, ['使用' + heroIndex, 'use' + heroIndex, 'pick' + heroIndex]);
+      if (usageText && parseFrequency(usageText) <= 0) continue;
+      const frequency = parseFrequency(readField(row, ['频次' + heroIndex, 'frequency' + heroIndex]));
+      if (role) normalized.push({ heroName, role, frequency });
+    }
+  });
+
+  if (errors.length > 0) return { pool: null, errors, warnings };
+  if (normalized.length === 0) warnings.push('未解析出任何英雄池数据');
+
+  return { pool: buildPoolFromRows(normalized), errors: [], warnings };
+}
+
+function normalizeLongRows(rows: RawRow[]): ImportResult {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  const normalized: Array<{ heroName: string; role: string; tier?: string; frequency?: number }> = [];
 
   rows.forEach((row, index) => {
     const heroName = readField(row, ['英雄名', '英雄', 'hero', 'heroName', 'name']);
     const role = readField(row, ['常用位置', '位置', 'role', 'position', 'pos']);
     const tier = readField(row, ['优先级', '评级', 'tier', 'priority']) || 'C';
+    const frequencyText = readField(row, ['频次', 'frequency', 'count']);
 
     if (!heroName) errors.push('第 ' + (index + 2) + ' 行缺少英雄名');
     if (!role) errors.push('第 ' + (index + 2) + ' 行缺少常用位置');
     if (role && !['1', '2', '3', '4', '5'].includes(String(role).trim())) {
       errors.push('第 ' + (index + 2) + ' 行常用位置必须是 1-5');
     }
-    if (heroName && role) normalized.push({ heroName, role, tier });
+    if (heroName && role) normalized.push({ heroName, role, tier, frequency: frequencyText ? parseFrequency(frequencyText) : undefined });
   });
 
-  if (rows.length === 0) errors.push('文件为空或没有表头');
   if (errors.length > 0) return { pool: null, errors, warnings };
   if (normalized.length === 0) warnings.push('未解析出任何英雄池数据');
 
   return { pool: buildPoolFromRows(normalized), errors: [], warnings };
+}
+
+function isWideHeroPool(rows: RawRow[]): boolean {
+  return rows.some((row) => Object.keys(row).some((key) => /^英雄\d+$/.test(key.trim())));
+}
+
+function parseFrequency(value: string): number {
+  const frequency = Number(value);
+  return Number.isFinite(frequency) ? frequency : 0;
 }
 
 function readField(row: RawRow, aliases: string[]): string {

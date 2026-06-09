@@ -1,9 +1,10 @@
-import { FALLBACK_BY_ROLE, HEROES, HERO_NAME_TO_ID, REAL_741_POOL_NAMES, TEAM_POOLS, tiers } from '../data/dotaData';
+import { FALLBACK_BY_ROLE, HEROES, HERO_NAME_TO_ID, REAL_741_POOL_NAMES, TEAM_POOL_ROWS, TEAM_POOLS, tiers } from '../data/dotaData';
 import type { FlatPool, Hero, HeroPool, RoleKey, RolePool, Tier, TierPool } from '../types';
 
 const heroList = HEROES as Hero[];
 const heroNameToId = HERO_NAME_TO_ID as Map<string, string>;
 const teamPools = TEAM_POOLS as Record<string, Record<string, Partial<Record<Tier, string[]>>>>;
+const teamPoolRows = TEAM_POOL_ROWS as Record<string, Array<{ heroName: string; role: string | number; frequency: number }>>;
 const fallbackByRole = FALLBACK_BY_ROLE as Record<number, string[]>;
 const tierList = tiers as Tier[];
 const real741PoolNames = REAL_741_POOL_NAMES as Record<string, string[]>;
@@ -75,6 +76,7 @@ export function flattenTeamPoolByFrequency(pool: HeroPool): HeroPool {
 
 export function buildPoolData(teamId: string, customPool?: HeroPool | null): HeroPool {
   if (teamId === 'CUSTOM' && customPool) return flattenTeamPoolByFrequency(customPool);
+  if (teamPoolRows[teamId]) return buildPoolFromRows(teamPoolRows[teamId]);
   if (teamPools[teamId]) return buildPoolFromRaw(teamPools[teamId]);
   if (teamId === 'NONE') return buildGeneratedPool(2);
   if (teamId === 'CUSTOM') return buildGeneratedPool(5);
@@ -130,20 +132,66 @@ export function buildPoolFromRaw(raw: Record<string, Partial<Record<Tier, string
   return pool;
 }
 
-export function buildPoolFromRows(rows: Array<{ heroName: string; role: string | number; tier?: string }>): HeroPool {
-  const raw: Record<string, Record<Tier, string[]>> = {};
-  for (const role of ['1', '2', '3', '4', '5']) raw[role] = { S: [], A: [], B: [], C: [] };
+export function buildPoolFromRows(rows: Array<{ heroName: string; role: string | number; tier?: string; frequency?: number }>): HeroPool {
+  const pool = blankPool();
+  const byRole = new Map<string, Map<string, { hero: Hero; frequency: number; firstIndex: number }>>();
+  const heroRoles = new Map<string, Set<string>>();
 
-  for (const row of rows) {
+  rows.forEach((row, index) => {
     const role = String(row.role).trim();
-    if (!['1', '2', '3', '4', '5'].includes(role)) continue;
-    const tier = normalizeTier(row.tier);
+    if (!['1', '2', '3', '4', '5'].includes(role)) return;
+
     const heroObj = getHeroByName(row.heroName);
-    raw[role][tier].push(heroObj.id);
     if (!heroById.has(heroObj.id)) heroById.set(heroObj.id, heroObj);
+
+    const frequency = Number.isFinite(row.frequency)
+      ? Number(row.frequency)
+      : tierWeight[normalizeTier(row.tier)];
+    if (!byRole.has(role)) byRole.set(role, new Map());
+    const roleHeroes = byRole.get(role)!;
+    const existing = roleHeroes.get(heroObj.id);
+    if (existing) {
+      existing.frequency += frequency;
+    } else {
+      roleHeroes.set(heroObj.id, { hero: heroObj, frequency, firstIndex: index });
+    }
+
+    if (!heroRoles.has(heroObj.id)) heroRoles.set(heroObj.id, new Set());
+    heroRoles.get(heroObj.id)?.add(role);
+  });
+
+  for (const role of ['1', '2', '3', '4', '5']) {
+    const roleKey = role as RoleKey;
+    pool[roleKey] = {
+      flat: [...(byRole.get(role)?.values() || [])]
+        .sort((left, right) => right.frequency - left.frequency || left.firstIndex - right.firstIndex)
+        .map((item) => item.hero)
+    };
   }
 
-  return buildPoolFromRaw(raw);
+  const flexScores = new Map<string, { hero: Hero; frequency: number; firstIndex: number }>();
+  for (const [heroId, roleSet] of heroRoles) {
+    if (roleSet.size < 2) continue;
+    for (const role of roleSet) {
+      const item = byRole.get(role)?.get(heroId);
+      if (!item) continue;
+      const existing = flexScores.get(heroId);
+      if (existing) {
+        existing.frequency += item.frequency;
+        existing.firstIndex = Math.min(existing.firstIndex, item.firstIndex);
+      } else {
+        flexScores.set(heroId, { ...item });
+      }
+    }
+  }
+
+  pool.flex = {
+    flat: [...flexScores.values()]
+      .sort((left, right) => right.frequency - left.frequency || left.firstIndex - right.firstIndex)
+      .map((item) => item.hero)
+  };
+
+  return pool;
 }
 
 export function buildReal741Pool(): Record<string, Hero[]> {

@@ -32,7 +32,7 @@ interface DraftStore {
   clearLocalDraft: () => void;
 }
 
-const defaultConfig: DraftConfig = { faction: 'radiant', pickOrder: 'first', myTeam: 'XG', enemyTeam: 'VG' };
+const defaultConfig: DraftConfig = { faction: 'radiant', pickOrder: 'first', myTeam: 'TRE', enemyTeam: 'VG' };
 const restoredDraft = loadDraftState();
 
 function persistCurrentState(state: DraftStore): void {
