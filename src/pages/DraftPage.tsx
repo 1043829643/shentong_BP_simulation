@@ -2,7 +2,7 @@ import { DRAFT_SEQUENCE, roleNames, roles, tiers } from '../data/dotaData';
 import { ATTRIBUTE_LABELS, ATTRIBUTE_ORDER, HERO_ATTRIBUTE_BY_ID, HERO_NUMERIC_ORDER, type HeroAttribute } from '../data/heroAttributes';
 import { getCurrentTurn, getDraftTurn, getLineup, isHeroSelected } from '../domain/draft';
 import { pickImpactLevel } from '../domain/evaluation';
-import { displayName, getAllHeroes, initials } from '../domain/heroes';
+import { displayName, flattenRolePoolByFrequency, getAllHeroes, initials } from '../domain/heroes';
 import { factionLabel, getLaneGroups, sideLabel } from '../domain/lanes';
 import { getTeam } from '../domain/teams';
 import { getActivePlan, useDraftStore } from '../store/useDraftStore';
@@ -26,8 +26,8 @@ export function DraftPage() {
         </div>
         {bpViewMode === 'heroPool' ? (
           <div className="hero-board">
-            <PoolRow title="我方英雄池" subtitle={getTeam(config.myTeam).name} pool={pools.my} activePlan={activePlan} turn={turn} config={config} onSelect={selectHero} />
-            <PoolRow title="对方英雄池" subtitle={getTeam(config.enemyTeam).name} pool={pools.enemy} activePlan={activePlan} turn={turn} config={config} onSelect={selectHero} />
+            <PoolRow title="我方英雄池" subtitle={getTeam(config.myTeam).name} pool={pools.my} activePlan={activePlan} turn={turn} config={config} onSelect={selectHero} sortByFrequency />
+            <PoolRow title="对方英雄池" subtitle={getTeam(config.enemyTeam).name} pool={pools.enemy} activePlan={activePlan} turn={turn} config={config} onSelect={selectHero} sortByFrequency />
             <PoolRow title="其他英雄" subtitle="Global Meta" pool={pools.other} activePlan={activePlan} turn={turn} config={config} onSelect={selectHero} />
           </div>
         ) : (
@@ -110,20 +110,19 @@ function heroOrder(heroId: string): number {
   return HERO_NUMERIC_ORDER[heroId] ?? 9999;
 }
 
-function PoolRow({ title, subtitle, pool, activePlan, turn, config, onSelect }: { title: string; subtitle: string; pool: HeroPool; activePlan: DraftPlan; turn: DraftTurn | null; config: DraftConfig; onSelect: (heroId: string) => void }) {
-  return <div className="pool-row"><div className="pool-label"><b>{title}</b><span>{subtitle}<br />1-5号位 + 摇摆位</span></div>{(roles as string[]).map((role) => <RolePanel key={role} role={role} tierMap={pool[role as keyof HeroPool]} activePlan={activePlan} turn={turn} config={config} onSelect={onSelect} />)}</div>;
+function PoolRow({ title, subtitle, pool, activePlan, turn, config, onSelect, sortByFrequency = false }: { title: string; subtitle: string; pool: HeroPool; activePlan: DraftPlan; turn: DraftTurn | null; config: DraftConfig; onSelect: (heroId: string) => void; sortByFrequency?: boolean }) {
+  return <div className="pool-row"><div className="pool-label"><b>{title}</b><span>{subtitle}<br />1-5号位 + 摇摆位</span></div>{(roles as string[]).map((role) => <RolePanel key={role} role={role} tierMap={pool[role as keyof HeroPool]} activePlan={activePlan} turn={turn} config={config} onSelect={onSelect} sortByFrequency={sortByFrequency} />)}</div>;
 }
 
-function RolePanel({ role, tierMap, activePlan, turn, config, onSelect }: { role: string; tierMap?: RolePool; activePlan: DraftPlan; turn: DraftTurn | null; config: DraftConfig; onSelect: (heroId: string) => void }) {
+function RolePanel({ role, tierMap, activePlan, turn, config, onSelect, sortByFrequency = false }: { role: string; tierMap?: RolePool; activePlan: DraftPlan; turn: DraftTurn | null; config: DraftConfig; onSelect: (heroId: string) => void; sortByFrequency?: boolean }) {
+  const heroes = sortByFrequency ? flattenRolePoolByFrequency(tierMap) : getRoleHeroes(tierMap);
+  return <div className="role-panel"><div className="role-head"><span>{(roleNames as Record<string, string>)[role]}</span><span>{heroes.length}</span></div><div className="role-body"><HeroWrap heroes={heroes} activePlan={activePlan} turn={turn} config={config} onSelect={onSelect} /></div></div>;
+}
+
+function getRoleHeroes(tierMap?: RolePool): Hero[] {
   const value = tierMap || { flat: [] };
-  const isFlat = 'flat' in value;
-  const count = isFlat ? value.flat.length : (tiers as string[]).reduce((total, tier) => total + ((value as TierPool)[tier as keyof TierPool]?.length || 0), 0);
-  return <div className="role-panel"><div className="role-head"><span>{(roleNames as Record<string, string>)[role]}</span><span>{count}</span></div><div className="role-body">{isFlat ? <HeroWrap heroes={value.flat} activePlan={activePlan} turn={turn} config={config} onSelect={onSelect} /> : (tiers as string[]).map((tier) => <TierLine key={tier} tier={tier} heroes={(value as TierPool)[tier as keyof TierPool] || []} activePlan={activePlan} turn={turn} config={config} onSelect={onSelect} />)}</div></div>;
-}
-
-function TierLine({ tier, heroes, activePlan, turn, config, onSelect }: { tier: string; heroes: Hero[]; activePlan: DraftPlan; turn: DraftTurn | null; config: DraftConfig; onSelect: (heroId: string) => void }) {
-  if (heroes.length === 0) return null;
-  return <div className="tier-line"><div className={'tier-badge ' + tier.toLowerCase()}>{tier}</div><HeroWrap heroes={heroes} activePlan={activePlan} turn={turn} config={config} onSelect={onSelect} /></div>;
+  if ('flat' in value) return value.flat;
+  return (tiers as string[]).flatMap((tier) => (value as TierPool)[tier as keyof TierPool] || []);
 }
 
 function HeroWrap({ heroes, activePlan, turn, config, onSelect }: { heroes: Hero[]; activePlan: DraftPlan; turn: DraftTurn | null; config: DraftConfig; onSelect: (heroId: string) => void }) {

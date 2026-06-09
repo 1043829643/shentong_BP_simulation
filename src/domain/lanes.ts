@@ -39,8 +39,11 @@ export function getPreferredLaneForHero(heroId: string, pool?: HeroPool | null):
     const roleValue = pool[role as keyof HeroPool];
     if (!roleValue) continue;
     if ('flat' in roleValue) {
-      const count = roleValue.flat.filter((heroObj: Hero) => heroObj.id === heroId).length;
-      if (count > 0) roleScores.set(role, (roleScores.get(role) || 0) + count);
+      const index = roleValue.flat.findIndex((heroObj: Hero) => heroObj.id === heroId);
+      if (index >= 0) {
+        const frequencyScore = roleValue.flat.length - index;
+        roleScores.set(role, (roleScores.get(role) || 0) + frequencyScore);
+      }
       continue;
     }
     for (const [tier, heroes] of Object.entries(roleValue as TierPool)) {

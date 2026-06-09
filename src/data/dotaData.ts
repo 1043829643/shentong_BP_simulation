@@ -47,7 +47,7 @@ export const HEROES = [
   { id: "juggernaut", name: "Juggernaut", cn: "主宰", roles: [1] },
   { id: "mirana", name: "Mirana", cn: "米拉娜", roles: [4, 5] },
   { id: "morphling", name: "Morphling", cn: "变体精灵", roles: [1] },
-  { id: "shadow_fiend", name: "Shadow Fiend", cn: "影魔", roles: [2] },
+  { id: "nevermore", name: "Shadow Fiend", cn: "影魔", roles: [2] },
   { id: "phantom_lancer", name: "Phantom Lancer", cn: "幻影长矛手", roles: [1] },
   { id: "puck", name: "Puck", cn: "帕克", roles: [2] },
   { id: "pudge", name: "Pudge", cn: "帕吉", roles: [4] },
@@ -165,13 +165,13 @@ HEROES.push(
   { id: "bounty_hunter", name: "Bounty Hunter", cn: "赏金猎人", roles: [4] },
   { id: "ancient_apparition", name: "Ancient Apparition", cn: "远古冰魄", roles: [5] },
   { id: "ogre_magi", name: "Ogre Magi", cn: "食人魔魔法师", roles: [5] },
-  { id: "longo", name: "Longo", cn: "朗戈", roles: [1, 2, 3, 4, 5] },
+  { id: "largo", name: "Largo", cn: "朗戈", roles: [1, 2, 3, 4, 5] },
 );
 
 export const heroById = new Map(HEROES.map((hero) => [hero.id, hero]));
 export const HERO_NAME_TO_ID = new Map([
   ["小小", "tiny"], ["凯", "kez"], ["风行者", "windrunner"], ["炼金术士", "alchemist"],
-  ["齐天大圣", "monkey_king"], ["琼英碧灵", "muerta"], ["影魔", "shadow_fiend"],
+  ["齐天大圣", "monkey_king"], ["琼英碧灵", "muerta"], ["影魔", "nevermore"],
   ["德鲁伊", "lone_druid"], ["熊战士", "ursa"], ["恐怖利刃", "terrorblade"],
   ["虚空假面", "faceless_void"], ["露娜", "luna"], ["噬魂鬼", "life_stealer"],
   ["卓尔游侠", "drow_ranger"], ["瘟疫法师", "necrolyte"], ["末日使者", "doom_bringer"],
@@ -191,7 +191,7 @@ export const HERO_NAME_TO_ID = new Map([
   ["斯拉达", "slardar"], ["哈斯卡", "huskar"], ["拉席克", "leshrac"], ["獣", "primal_beast"],
   ["狙击手", "sniper"], ["死亡先知", "death_prophet"], ["光之守卫", "keeper_of_the_light"],
   ["宙斯", "zuus"], ["修补匠", "tinker"], ["蝙蝠骑士", "batrider"], ["撼地者", "earthshaker"],
-  ["朗戈", "longo"], ["狼人", "lycan"], ["伐木机", "shredder"], ["司夜刺客", "nyx_assassin"],
+  ["朗戈", "largo"], ["狼人", "lycan"], ["伐木机", "shredder"], ["司夜刺客", "nyx_assassin"],
   ["大地之灵", "earth_spirit"], ["斧王", "axe"], ["潮汐猎人", "tidehunter"],
   ["孽主", "abyssal_underlord"], ["玛尔斯", "mars"], ["半人马战行者", "centaur"],
   ["酒仙", "brewmaster"], ["谜团", "enigma"], ["马格纳斯", "magnataur"],
@@ -213,7 +213,7 @@ export const HERO_NAME_TO_ID = new Map([
 export const TEAM_POOLS = {
   XG: {
     1: { S: ["drow_ranger", "lone_druid", "beastmaster", "monkey_king"], A: ["terrorblade", "tiny", "faceless_void", "weaver", "alchemist"], B: ["ursa", "kez"], C: ["muerta", "life_stealer", "luna", "templar_assassin", "morphling", "dragon_knight", "spectre", "phantom_assassin", "furion", "phantom_lancer", "gyrocopter", "clinkz"] },
-    2: { S: ["pangolier", "tinker", "slardar", "beastmaster", "sand_king", "storm_spirit"], A: ["ember_spirit", "puck", "monkey_king"], B: ["leshrac", "primal_beast", "keeper_of_the_light"], C: ["void_spirit", "shadow_fiend", "huskar", "razor", "sniper"] },
+    2: { S: ["pangolier", "tinker", "slardar", "beastmaster", "sand_king", "storm_spirit"], A: ["ember_spirit", "puck", "monkey_king"], B: ["leshrac", "primal_beast", "keeper_of_the_light"], C: ["void_spirit", "nevermore", "huskar", "razor", "sniper"] },
     3: { S: ["slardar", "pangolier", "beastmaster"], A: ["bristleback", "doom_bringer", "mars", "shredder", "abyssal_underlord", "tidehunter", "axe"], B: ["dawnbreaker", "brewmaster", "magnataur", "primal_beast"], C: ["centaur", "night_stalker"] },
     4: { S: ["shadow_demon", "hoodwink", "rubick"], A: ["rattletrap", "tiny"], B: ["keeper_of_the_light", "wisp", "tusk", "techies", "nyx_assassin", "batrider", "lion"], C: ["windrunner", "dark_willow", "spirit_breaker", "shadow_shaman", "muerta"] },
     5: { S: ["phoenix"], A: ["rattletrap"], B: ["rubick", "witch_doctor", "enchantress", "venomancer", "bane"], C: ["silencer", "disruptor", "treant", "winter_wyvern", "warlock", "jakiro", "dazzle", "oracle", "mirana", "elder_titan", "ringmaster", "crystal_maiden"] },
@@ -229,7 +229,7 @@ export const TEAM_POOLS = {
 
 export const FALLBACK_BY_ROLE = {
   1: ["terrorblade", "faceless_void", "drow_ranger", "sven", "naga_siren", "ursa", "morphling", "luna", "phantom_assassin", "slark", "medusa", "monkey_king"],
-  2: ["puck", "storm_spirit", "lina", "shadow_fiend", "ember_spirit", "queenofpain", "invoker", "leshrac", "viper", "kunkka", "zuus", "pangolier"],
+  2: ["puck", "storm_spirit", "lina", "nevermore", "ember_spirit", "queenofpain", "invoker", "leshrac", "viper", "kunkka", "zuus", "pangolier"],
   3: ["mars", "doom_bringer", "axe", "centaur", "brewmaster", "shredder", "tidehunter", "beastmaster", "slardar", "dawnbreaker", "abyssal_underlord", "dark_seer"],
   4: ["rubick", "tiny", "tusk", "hoodwink", "earthshaker", "rattletrap", "nyx_assassin", "batrider", "dark_willow", "mirana", "techies", "spirit_breaker"],
   5: ["crystal_maiden", "bane", "shadow_demon", "phoenix", "lich", "disruptor", "oracle", "treant", "warlock", "witch_doctor", "jakiro", "dazzle"],

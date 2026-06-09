@@ -1,5 +1,5 @@
 import { FALLBACK_BY_ROLE, HEROES, HERO_NAME_TO_ID, REAL_741_POOL_NAMES, TEAM_POOLS, tiers } from '../data/dotaData';
-import type { FlatPool, Hero, HeroPool, RoleKey, Tier, TierPool } from '../types';
+import type { FlatPool, Hero, HeroPool, RoleKey, RolePool, Tier, TierPool } from '../types';
 
 const heroList = HEROES as Hero[];
 const heroNameToId = HERO_NAME_TO_ID as Map<string, string>;
@@ -42,18 +42,39 @@ export function initials(heroObj: Hero): string {
 }
 
 export function blankPool(): HeroPool {
+  const emptyFlat = (): FlatPool => ({ flat: [] });
   return {
-    '1': { S: [], A: [], B: [], C: [] },
-    '2': { S: [], A: [], B: [], C: [] },
-    '3': { S: [], A: [], B: [], C: [] },
-    '4': { S: [], A: [], B: [], C: [] },
-    '5': { S: [], A: [], B: [], C: [] },
-    flex: { S: [], A: [], B: [], C: [] }
+    '1': emptyFlat(),
+    '2': emptyFlat(),
+    '3': emptyFlat(),
+    '4': emptyFlat(),
+    '5': emptyFlat(),
+    flex: emptyFlat()
+  };
+}
+
+export function flattenRolePoolByFrequency(rolePool?: RolePool): Hero[] {
+  if (!rolePool) return [];
+  if ('flat' in rolePool) return rolePool.flat;
+  const tierPool = rolePool as TierPool;
+  const heroes: Hero[] = [];
+  for (const tier of tierList) heroes.push(...(tierPool[tier] || []));
+  return heroes;
+}
+
+export function flattenTeamPoolByFrequency(pool: HeroPool): HeroPool {
+  return {
+    '1': { flat: flattenRolePoolByFrequency(pool['1']) },
+    '2': { flat: flattenRolePoolByFrequency(pool['2']) },
+    '3': { flat: flattenRolePoolByFrequency(pool['3']) },
+    '4': { flat: flattenRolePoolByFrequency(pool['4']) },
+    '5': { flat: flattenRolePoolByFrequency(pool['5']) },
+    flex: { flat: flattenRolePoolByFrequency(pool.flex) }
   };
 }
 
 export function buildPoolData(teamId: string, customPool?: HeroPool | null): HeroPool {
-  if (teamId === 'CUSTOM' && customPool) return customPool;
+  if (teamId === 'CUSTOM' && customPool) return flattenTeamPoolByFrequency(customPool);
   if (teamPools[teamId]) return buildPoolFromRaw(teamPools[teamId]);
   if (teamId === 'NONE') return buildGeneratedPool(2);
   if (teamId === 'CUSTOM') return buildGeneratedPool(5);
@@ -81,11 +102,11 @@ export function buildPoolFromRaw(raw: Record<string, Partial<Record<Tier, string
 
   for (const role of [1, 2, 3, 4, 5]) {
     const roleKey = String(role) as RoleKey;
-    const tierPool = pool[roleKey] as TierPool;
+    const flatHeroes: Hero[] = [];
     for (const tier of tierList) {
       for (const heroId of raw[role]?.[tier] || raw[roleKey]?.[tier] || []) {
         const heroObj = getHero(heroId);
-        tierPool[tier].push(heroObj);
+        flatHeroes.push(heroObj);
         if (!appearances.has(heroId)) appearances.set(heroId, new Set());
         appearances.get(heroId)?.add(role);
         if (!bestTier.has(heroId) || tierWeight[tier] > tierWeight[bestTier.get(heroId)!]) {
@@ -93,12 +114,18 @@ export function buildPoolFromRaw(raw: Record<string, Partial<Record<Tier, string
         }
       }
     }
+    pool[roleKey] = { flat: flatHeroes };
   }
 
-  const flexPool = pool.flex as TierPool;
-  for (const [heroId, roleSet] of appearances) {
-    if (roleSet.size >= 2) flexPool[bestTier.get(heroId) || 'C'].push(getHero(heroId));
-  }
+  const flexHeroes = [...appearances.entries()]
+    .filter(([, roleSet]) => roleSet.size >= 2)
+    .map(([heroId, roleSet]) => ({
+      hero: getHero(heroId),
+      score: roleSet.size * 10 + tierWeight[bestTier.get(heroId) || 'C']
+    }))
+    .sort((left, right) => right.score - left.score || displayName(left.hero).localeCompare(displayName(right.hero), 'zh-CN'))
+    .map((item) => item.hero);
+  pool.flex = { flat: flexHeroes };
 
   return pool;
 }
