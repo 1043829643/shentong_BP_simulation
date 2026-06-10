@@ -1006,6 +1006,28 @@
       text-shadow: 0 0 8px rgba(240, 192, 95, 0.35);
     }
 
+    .track-row.current .track-slot.empty {
+      opacity: 1;
+      animation: current-slot-pulse 1.15s ease-in-out infinite;
+      border-color: #f0c05f;
+      box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.12),
+        0 0 0 1px rgba(240, 192, 95, 0.28),
+        0 0 16px rgba(240, 192, 95, 0.45);
+      z-index: 3;
+    }
+
+    @keyframes current-slot-pulse {
+      0%,
+      100% {
+        transform: scale(1);
+      }
+
+      50% {
+        transform: scale(1.08);
+      }
+    }
+
     .track-row.future {
       opacity: 0.45;
     }
@@ -1088,6 +1110,22 @@
 
     .track-slot.slot-pick {
       border-color: rgba(232, 199, 127, 0.72);
+    }
+
+    .track-slot.empty {
+      overflow: hidden;
+      background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0)),
+        #14110d;
+      opacity: 0.9;
+    }
+
+    .track-slot.empty.slot-pick {
+      border-color: rgba(232, 199, 127, 0.45);
+    }
+
+    .track-slot.empty.slot-ban {
+      border-color: rgba(163, 58, 58, 0.55);
     }
 
     .track-slot.slot-ban img {

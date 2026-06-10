@@ -166,8 +166,11 @@ function TurnRow({ step, activePlan, onTruncate }: { step: number; activePlan: D
 }
 
 function TrackSlot({ stepData, turn }: { stepData?: DraftStep; turn: DraftStep | ReturnType<typeof getDraftTurn> }) {
-  if (!stepData || !turn) return null;
+  if (!turn) return null;
   const actionType = turn.action.toLowerCase();
+  if (!stepData) {
+    return <div className={'track-slot ' + turn.side + ' empty slot-' + actionType} title={String(turn.step).padStart(2, '0') + ' ' + turn.action + ' ' + factionLabel(turn.side)} aria-label={String(turn.step).padStart(2, '0') + ' ' + turn.action + ' ' + factionLabel(turn.side)}></div>;
+  }
   const heroObj = stepData.hero;
   return <div className={'track-slot ' + turn.side + ' filled slot-' + actionType} title={String(turn.step).padStart(2, '0') + ' ' + turn.action + ' ' + factionLabel(turn.side) + '：' + displayName(heroObj) + ' / ' + heroObj.name}><span className="track-fallback">{initials(heroObj)}</span><HeroImage hero={heroObj} />{turn.action === 'Ban' && <span className="ban-cross" aria-hidden="true"></span>}</div>;
 }

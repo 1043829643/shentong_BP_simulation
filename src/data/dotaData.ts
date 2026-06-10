@@ -1,12 +1,12 @@
 // @ts-nocheck
 export const DRAFT_SEQUENCE = [
   { action: "Ban", pickOrder: "first" },
-  { action: "Ban", pickOrder: "second" },
-  { action: "Ban", pickOrder: "second" },
   { action: "Ban", pickOrder: "first" },
   { action: "Ban", pickOrder: "second" },
   { action: "Ban", pickOrder: "second" },
   { action: "Ban", pickOrder: "first" },
+  { action: "Ban", pickOrder: "second" },
+  { action: "Ban", pickOrder: "second" },
   { action: "Pick", pickOrder: "first" },
   { action: "Pick", pickOrder: "second" },
   { action: "Ban", pickOrder: "first" },
@@ -20,8 +20,8 @@ export const DRAFT_SEQUENCE = [
   { action: "Pick", pickOrder: "first" },
   { action: "Ban", pickOrder: "first" },
   { action: "Ban", pickOrder: "second" },
-  { action: "Ban", pickOrder: "second" },
   { action: "Ban", pickOrder: "first" },
+  { action: "Ban", pickOrder: "second" },
   { action: "Pick", pickOrder: "first" },
   { action: "Pick", pickOrder: "second" },
 ];
